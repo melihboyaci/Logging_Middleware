@@ -93,3 +93,13 @@ Faz 9 (opsiyonel):
 - Performance plot automation
 - RabbitMQ queue depth metric ceker script
 - CI artifact'larina grafik ekleme
+
+## 8) Revizyon - Commit ve Push Bilgisi
+
+Bu rapor, kullanici istegi uzerine commit/push adimi sonrasinda guncellendi.
+
+- Commit: `25b9a3e`
+- Mesaj: `Add phase 8 CI/CD workflow with GitHub Actions and tests.`
+- Branch: `main`
+- Remote: `origin`
+- Push: `main -> origin/main` basarili
