@@ -4,7 +4,7 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 
 ## Aktif Faz
 
-**Faz 7 Tamamlandi.** E2E smoke otomasyonu ve compose artifact mount'lari eklendi.
+**Faz 8 Tamamlandi.** CI/CD workflow (pytest + compose config + e2e smoke) eklendi.
 
 ## Faz Tablosu
 
@@ -16,6 +16,7 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 - [x] **Faz 5** - Metrikler + Stres Testi (Singleton MetricsCollector + load_runner + queue-depth + matplotlib raporlari)
 - [x] **Faz 6** - Testler + README + Rapor + Video senaryosu
 - [x] **Faz 7** - E2E smoke otomasyonu (compose up/down + health + output/metrics dogrulama)
+- [x] **Faz 8** - CI/CD otomasyonu (GitHub Actions: test + compose config + e2e smoke + artifact upload)
 
 ## Bitirilen isler (kronolojik)
 
@@ -35,10 +36,12 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 - Faz 6 testleri: tam suite `python -m pytest -q` basariyla calisti (14/14).
 - Faz 7 tamamlandi: `scripts/e2e_smoke.py` eklendi, compose dosyasina `output/reports` volume mount'lari eklendi, E2E odakli testler yazildi.
 - Faz 7 testleri: tum suite `python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py tests/test_phase4_formatting.py tests/test_phase5_metrics_and_stress.py tests/test_phase7_e2e_script.py` basariyla calisti (16/16); `docker compose ... config` dogrulandi.
+- Faz 8 tamamlandi: `.github/workflows/ci.yml` eklendi (tests + e2e-smoke jobs), README CI bolumu guncellendi, workflow varlik testi yazildi.
+- Faz 8 testleri: tam suite `python -m pytest -q` basariyla calisti (17/17); `docker compose ... config` dogrulandi.
 
 ## Sonraki adim
 
-Sonraki adim: final commit/push veya Faz 8 (CI/CD) otomasyonu.
+Sonraki adim: final commit/push veya Faz 9 (performans grafik otomasyonu).
 
 ## Bloklayicilar / Notlar
 

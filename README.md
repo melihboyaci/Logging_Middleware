@@ -118,6 +118,15 @@ python -m pytest -q tests/test_phase5_metrics_and_stress.py
 - Faz durumu: `docs/STATE.md`
 - Faz raporlari: `docs/phase-reports/`
 
+## CI/CD
+
+GitHub Actions workflow:
+
+- `.github/workflows/ci.yml`
+  - `tests` job: dependency install + `pytest` + `docker compose config`
+  - `e2e-smoke` job: `scripts/e2e_smoke.py` calistirir
+  - `output/` ve `reports/` artifact olarak upload edilir
+
 ## Video / Teslim Icigi
 
 Video anlatiminda su akisi takip edilebilir:
