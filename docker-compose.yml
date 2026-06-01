@@ -1,0 +1,47 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: dm-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
+  middleware:
+    build:
+      context: .
+      dockerfile: middleware/Dockerfile
+    container_name: dm-middleware
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+      PREFETCH_COUNT: "50"
+    ports:
+      - "8000:8000"
+    networks:
+      - app-net
+
+  producer:
+    build:
+      context: .
+      dockerfile: producer/Dockerfile
+    container_name: dm-producer
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
