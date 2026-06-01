@@ -96,3 +96,13 @@ Faz 8 (opsiyonel):
 - GitHub Actions CI
 - E2E smoke job
 - reports artifact upload
+
+## 8) Revizyon - Commit ve Push Bilgisi
+
+Bu rapor, kullanici istegi uzerine commit/push adimi sonrasinda guncellendi.
+
+- Commit: `441032e`
+- Mesaj: `Add phase 7 end-to-end smoke automation and reports.`
+- Branch: `main`
+- Remote: `origin`
+- Push: `main -> origin/main` basarili
