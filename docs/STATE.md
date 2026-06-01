@@ -4,17 +4,17 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 
 ## Aktif Faz
 
-**Faz 2 - Hazir baslangic.** Faz 1 tamamlandi (producer cekirdegi + testler).
+**Tum Fazlar Tamamlandi.** Faz 6 teslim dokumantasyonu ile birlikte kapandi.
 
 ## Faz Tablosu
 
 - [x] **Faz 0** - Iskelet ve Altyapi (repo yapisi, `shared/log_schema.py`, iki `Dockerfile`, `docker-compose.yml` [producer + middleware + rabbitmq healthcheck], `.gitignore`)
 - [x] **Faz 1** - Producer (LogFactory, hassas veri ureticileri, senaryolar, `aio-pika` publisher, CLI)
-- [ ] **Faz 2** - Middleware iskeleti + Guvenlik (consumer + FastAPI metrics/health, CoR taban, KVKK AnonymizationHandler)
-- [ ] **Faz 3** - Filtre + Zenginlestirme (FilterHandler + Decorator zinciri)
-- [ ] **Faz 4** - Bicimlendirme + Yonlendirme (Strategy formatlayicilar + FormatterFactory + role_router)
-- [ ] **Faz 5** - Metrikler + Stres Testi (Singleton MetricsCollector + load_runner + queue-depth + matplotlib raporlari)
-- [ ] **Faz 6** - Testler + README + Rapor + Video senaryosu
+- [x] **Faz 2** - Middleware iskeleti + Guvenlik (consumer + FastAPI metrics/health, CoR taban, KVKK AnonymizationHandler)
+- [x] **Faz 3** - Filtre + Zenginlestirme (FilterHandler + Decorator zinciri)
+- [x] **Faz 4** - Bicimlendirme + Yonlendirme (Strategy formatlayicilar + FormatterFactory + role_router)
+- [x] **Faz 5** - Metrikler + Stres Testi (Singleton MetricsCollector + load_runner + queue-depth + matplotlib raporlari)
+- [x] **Faz 6** - Testler + README + Rapor + Video senaryosu
 
 ## Bitirilen isler (kronolojik)
 
@@ -22,10 +22,20 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 - Faz 0 dogrulamasi: `docker compose ... config`, `python -m producer.src.main`, `python -m middleware.src.main` komutlari basariyla calisti.
 - Faz 1 tamamlandi: producer icin `config`, `LogFactory`, hassas veri ureticileri, senaryo jenerasyonu, `aio-pika` publisher ve CLI parametreleri eklendi.
 - Faz 1 testleri: `python -m producer.src.main --dry-run --total 20 --batch 5 --rate 100` ve `python -m pytest -q tests/test_phase1_producer.py` basariyla calisti (3/3).
+- Faz 2 tamamlandi: middleware icin `config`, metrics collector, CoR tabani, KVKK anonimlestirme kurallari/anonymizer, RabbitMQ consumer, FastAPI `health/metrics` endpointleri eklendi.
+- Faz 2 testleri: `python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py` komutu basariyla calisti (6/6); `docker compose ... config` dogrulandi.
+- Faz 3 tamamlandi: `filter_handler`, `enrichment_handler` ve `enrichment/enrichers.py` eklendi; pipeline zinciri `Anonymize -> Filter -> Enrich -> Terminal` olacak sekilde genisletildi.
+- Faz 3 testleri: `python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py` basariyla calisti (9/9).
+- Faz 4 tamamlandi: Strategy formatlayicilar (`json/csv/markdown/html`), formatter factory ve role bazli dosya yazan `RoleRouter` eklendi; terminal handler role-router ile entegre edildi.
+- Faz 4 testleri: `python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py tests/test_phase4_formatting.py` basariyla calisti (11/11).
+- Faz 5 tamamlandi: metrics collector p50/p95/p99 gecikme ozeti ile genisletildi; metrics reporter eklendi; producer stress load runner (ramp/burst profile) eklendi.
+- Faz 5 testleri: tum suite `python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py tests/test_phase4_formatting.py tests/test_phase5_metrics_and_stress.py` basariyla calisti (14/14). Ayrica `reports/` altina ornek profil ve metrics dosyasi uretildi.
+- Faz 6 tamamlandi: `README.md`, `docs/report-template.md`, `docs/video-script.md` olusturuldu; teslim dokumantasyonu kapatildi.
+- Faz 6 testleri: tam suite `python -m pytest -q` basariyla calisti (14/14).
 
 ## Sonraki adim
 
-Faz 2: Middleware iskeleti (`transport/consumer.py`, `api/routes.py`, `config.py`, `main.py`) + CoR tabani ve KVKK anonimlestirme handler'i.
+Sonraki adim: final commit/push veya secilen fazlar icin ek iyilestirme.
 
 ## Bloklayicilar / Notlar
 
