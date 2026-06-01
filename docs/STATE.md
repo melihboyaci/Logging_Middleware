@@ -4,7 +4,7 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 
 ## Aktif Faz
 
-**Tum Fazlar Tamamlandi.** Faz 6 teslim dokumantasyonu ile birlikte kapandi.
+**Faz 7 Tamamlandi.** E2E smoke otomasyonu ve compose artifact mount'lari eklendi.
 
 ## Faz Tablosu
 
@@ -15,6 +15,7 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 - [x] **Faz 4** - Bicimlendirme + Yonlendirme (Strategy formatlayicilar + FormatterFactory + role_router)
 - [x] **Faz 5** - Metrikler + Stres Testi (Singleton MetricsCollector + load_runner + queue-depth + matplotlib raporlari)
 - [x] **Faz 6** - Testler + README + Rapor + Video senaryosu
+- [x] **Faz 7** - E2E smoke otomasyonu (compose up/down + health + output/metrics dogrulama)
 
 ## Bitirilen isler (kronolojik)
 
@@ -32,10 +33,12 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 - Faz 5 testleri: tum suite `python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py tests/test_phase4_formatting.py tests/test_phase5_metrics_and_stress.py` basariyla calisti (14/14). Ayrica `reports/` altina ornek profil ve metrics dosyasi uretildi.
 - Faz 6 tamamlandi: `README.md`, `docs/report-template.md`, `docs/video-script.md` olusturuldu; teslim dokumantasyonu kapatildi.
 - Faz 6 testleri: tam suite `python -m pytest -q` basariyla calisti (14/14).
+- Faz 7 tamamlandi: `scripts/e2e_smoke.py` eklendi, compose dosyasina `output/reports` volume mount'lari eklendi, E2E odakli testler yazildi.
+- Faz 7 testleri: tum suite `python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py tests/test_phase4_formatting.py tests/test_phase5_metrics_and_stress.py tests/test_phase7_e2e_script.py` basariyla calisti (16/16); `docker compose ... config` dogrulandi.
 
 ## Sonraki adim
 
-Sonraki adim: final commit/push veya secilen fazlar icin ek iyilestirme.
+Sonraki adim: final commit/push veya Faz 8 (CI/CD) otomasyonu.
 
 ## Bloklayicilar / Notlar
 

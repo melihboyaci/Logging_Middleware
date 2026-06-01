@@ -95,6 +95,12 @@ Tum testleri calistir:
 python -m pytest -q
 ```
 
+E2E smoke (docker gerekir):
+
+```bash
+python scripts/e2e_smoke.py
+```
+
 Faz bazli:
 
 ```bash

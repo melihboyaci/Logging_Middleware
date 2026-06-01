@@ -26,6 +26,9 @@ services:
       PREFETCH_COUNT: "50"
     ports:
       - "8000:8000"
+    volumes:
+      - ./output:/app/output
+      - ./reports:/app/reports
     networks:
       - app-net
 
@@ -39,6 +42,8 @@ services:
         condition: service_healthy
     environment:
       AMQP_URL: amqp://guest:guest@rabbitmq:5672/
+    volumes:
+      - ./reports:/app/reports
     networks:
       - app-net
 
