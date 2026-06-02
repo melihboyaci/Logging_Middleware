@@ -23,6 +23,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r producer/requirements.txt
           python -m pip install -r middleware/requirements.txt
+          python -m pip install -r requirements-dev.txt
           python -m pip install pytest
 
       - name: Run pytest suite
@@ -55,6 +56,11 @@ jobs:
         run: |
           python scripts/e2e_smoke.py
 
+      - name: Generate performance report
+        if: always()
+        run: |
+          python scripts/performance_report.py --reports-dir reports --skip-queue-fetch
+
       - name: Upload output artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -67,4 +73,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: reports-artifacts
-          path: reports/
+          path: |
+            reports/
+            !reports/**/__pycache__/**

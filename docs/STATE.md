@@ -4,7 +4,7 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 
 ## Aktif Faz
 
-**Faz 8 Tamamlandi.** CI/CD workflow (pytest + compose config + e2e smoke) eklendi.
+**Faz 9 Tamamlandi.** Performans grafik otomasyonu ve queue depth izleme eklendi.
 
 ## Faz Tablosu
 
@@ -17,6 +17,7 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 - [x] **Faz 6** - Testler + README + Rapor + Video senaryosu
 - [x] **Faz 7** - E2E smoke otomasyonu (compose up/down + health + output/metrics dogrulama)
 - [x] **Faz 8** - CI/CD otomasyonu (GitHub Actions: test + compose config + e2e smoke + artifact upload)
+- [x] **Faz 9** - Performans grafik otomasyonu (queue monitor + performance_report + plots + summary)
 
 ## Bitirilen isler (kronolojik)
 
@@ -38,10 +39,12 @@ Bu dosya her faz basinda/sonunda guncellenir. Yeni bir oturum, "nerede kaldik?" 
 - Faz 7 testleri: tum suite `python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py tests/test_phase4_formatting.py tests/test_phase5_metrics_and_stress.py tests/test_phase7_e2e_script.py` basariyla calisti (16/16); `docker compose ... config` dogrulandi.
 - Faz 8 tamamlandi: `.github/workflows/ci.yml` eklendi (tests + e2e-smoke jobs), README CI bolumu guncellendi, workflow varlik testi yazildi.
 - Faz 8 testleri: tam suite `python -m pytest -q` basariyla calisti (17/17); `docker compose ... config` dogrulandi.
+- Faz 9 tamamlandi: `queue_monitor`, `scripts/performance_report.py`, `requirements-dev.txt`, e2e queue sampling ve CI performance report adimi eklendi.
+- Faz 9 testleri: tam suite `python -m pytest -q` basariyla calisti (21/21).
 
 ## Sonraki adim
 
-Sonraki adim: final commit/push veya Faz 9 (performans grafik otomasyonu).
+Sonraki adim: final commit/push ve teslim hazirligi (video + EDSYE raporu).
 
 ## Bloklayicilar / Notlar
 

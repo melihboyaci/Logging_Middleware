@@ -118,6 +118,22 @@ python -m pytest -q tests/test_phase5_metrics_and_stress.py
 - Faz durumu: `docs/STATE.md`
 - Faz raporlari: `docs/phase-reports/`
 
+## Performans Raporu (Faz 9)
+
+```bash
+python -m pip install -r requirements-dev.txt
+python scripts/performance_report.py --reports-dir reports
+```
+
+Uretilen ciktilar:
+
+- `reports/performance_summary.md`
+- `reports/plots/pipeline_counts.png`
+- `reports/plots/latency_percentiles.png`
+- `reports/plots/queue_depth.png`
+
+E2E smoke calistirildiginde `reports/queue_samples.jsonl` dosyasi da olusur.
+
 ## CI/CD
 
 GitHub Actions workflow:

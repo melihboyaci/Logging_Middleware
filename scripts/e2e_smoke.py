@@ -7,10 +7,15 @@ import time
 from pathlib import Path
 from urllib.request import urlopen
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from middleware.src.metrics.queue_monitor import fetch_queue_depth
+
 OUTPUT = ROOT / "output"
 REPORTS = ROOT / "reports"
+QUEUE_SAMPLES = REPORTS / "queue_samples.jsonl"
 
 
 def run(command: list[str], timeout: int = 180) -> subprocess.CompletedProcess[str]:
@@ -58,6 +63,24 @@ def clean_artifacts() -> None:
     for target in [OUTPUT / "sysadmin.md", OUTPUT / "developer.json", OUTPUT / "security.csv"]:
         if target.exists():
             target.unlink()
+    if QUEUE_SAMPLES.exists():
+        QUEUE_SAMPLES.unlink()
+
+
+def sample_queue_depth(duration_seconds: int = 10, interval_seconds: float = 1.0) -> None:
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    started = time.time()
+    elapsed = 0.0
+    while elapsed <= duration_seconds:
+        try:
+            depth = fetch_queue_depth("logs.raw")
+            row = {"elapsed_s": round(elapsed, 2), "depth": depth}
+            with QUEUE_SAMPLES.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(row) + "\n")
+        except RuntimeError:
+            pass
+        time.sleep(interval_seconds)
+        elapsed = time.time() - started
 
 
 def main() -> None:
@@ -86,8 +109,8 @@ def main() -> None:
             timeout=180,
         )
 
-        # Give middleware a short processing window.
-        time.sleep(4)
+        print("E2E smoke: sampling queue depth...")
+        sample_queue_depth(duration_seconds=8, interval_seconds=1.0)
 
         print("E2E smoke: validating outputs and metrics...")
         assert_outputs()
