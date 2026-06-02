@@ -84,5 +84,14 @@ python scripts/performance_report.py --reports-dir reports --skip-queue-fetch
 
 ## 7) Sonraki Adim
 
-- Final commit/push
 - Video cekimi ve EDSYE raporu tamamlama
+
+## 8) Revizyon - Commit ve Push Bilgisi
+
+Bu rapor, kullanici istegi uzerine commit/push adimi sonrasinda guncellendi.
+
+- Commit: `fc64b29`
+- Mesaj: `Add phase 9 performance reporting with queue monitoring and plots.`
+- Branch: `main`
+- Remote: `origin`
+- Push: `main -> origin/main` basarili
