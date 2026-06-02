@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from middleware.src.api.routes import health
+from middleware.src.api.routes import health, metrics
+from middleware.src.metrics.collector import METRICS
 from middleware.src.pipeline.anonymization_handler import AnonymizationHandler
 from shared.log_schema import LogLevel, LogRecord, LogType, UserRole
 
@@ -50,3 +51,13 @@ def test_anonymizer_is_idempotent_for_already_masked_values() -> None:
 
 def test_health_route_returns_ok() -> None:
     assert health() == {"status": "ok"}
+
+
+def test_metrics_route_returns_nested_latency_summary() -> None:
+    METRICS.record_processing_latency(0.01)
+    METRICS.record_processing_latency(0.02)
+
+    payload = metrics()
+    assert payload["consumed_total"] >= 0
+    assert "processing_latency_seconds" in payload
+    assert "p50" in payload["processing_latency_seconds"]

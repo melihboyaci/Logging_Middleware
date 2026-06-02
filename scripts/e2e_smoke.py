@@ -70,7 +70,7 @@ def main() -> None:
         print("E2E smoke: waiting middleware health...")
         wait_for_health("http://localhost:8000/health")
 
-        print("E2E smoke: sending sample load with producer dry publish...")
+        print("E2E smoke: sending sample load with producer publish...")
         run(
             [
                 "python",

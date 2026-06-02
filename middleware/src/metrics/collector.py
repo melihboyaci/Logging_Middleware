@@ -21,9 +21,11 @@ class MetricsCollector:
         if not self.processing_latency_seconds:
             return {"p50": 0.0, "p95": 0.0, "p99": 0.0}
         values = sorted(self.processing_latency_seconds)
-        if len(values) == 1:
-            only = values[0]
-            return {"p50": only, "p95": only, "p99": only}
+        if len(values) < 20:
+            p50 = values[len(values) // 2]
+            p95 = values[max(0, int(len(values) * 0.95) - 1)]
+            p99 = values[-1]
+            return {"p50": p50, "p95": p95, "p99": p99}
         q = quantiles(values, n=100, method="inclusive")
         p50, p95, p99 = q[49], q[94], q[98]
         return {"p50": p50, "p95": p95, "p99": p99}

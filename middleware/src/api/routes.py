@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter
 
 from middleware.src.metrics.collector import METRICS
@@ -13,5 +15,5 @@ def health() -> dict[str, str]:
 
 
 @router.get("/metrics")
-def metrics() -> dict[str, int]:
+def metrics() -> dict[str, Any]:
     return METRICS.snapshot()
