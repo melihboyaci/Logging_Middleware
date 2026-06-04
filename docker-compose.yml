@@ -22,6 +22,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
+      # Host'tan degil, Docker agi icinden: servis adi "rabbitmq" (loglardaki 172.x.x.x kullanilmaz).
       AMQP_URL: amqp://guest:guest@rabbitmq:5672/
       PREFETCH_COUNT: "50"
     ports:

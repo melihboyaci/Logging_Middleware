@@ -95,9 +95,11 @@ docker compose down
 
 | Kaynak | Adres / konum |
 |--------|----------------|
-| RabbitMQ yönetim paneli | http://localhost:15672 (`guest` / `guest`) |
-| Sağlık kontrolü | http://localhost:8000/health |
-| Metrikler | http://localhost:8000/metrics |
+| RabbitMQ yönetim paneli | http://127.0.0.1:15672 (`guest` / `guest`) |
+| Sağlık kontrolü | http://127.0.0.1:8000/health |
+| Metrikler | http://127.0.0.1:8000/metrics |
+
+Windows'ta `localhost` bazen IPv6 (`::1`) olarak çözülür; Docker port yönlendirmesi IPv4 (`127.0.0.1`) üzerindedir — özellikle RabbitMQ paneli için `127.0.0.1` kullanın. Konteyner loglarındaki `172.x.x.x` adresleri yalnızca Docker ağı içindir; tarayıcı veya host'tan çalışan producer için kullanılmaz.
 | Çıktı dosyaları | `output/` |
 | Performans grafikleri | `reports/plots/` |
 | Sunum akış rehberi | `docs/SUNUM_RAPORU.md` |

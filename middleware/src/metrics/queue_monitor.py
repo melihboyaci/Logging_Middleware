@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 def fetch_queue_depth(
     queue_name: str,
     *,
-    mgmt_url: str = "http://localhost:15672",
+    mgmt_url: str = "http://127.0.0.1:15672",
     vhost: str = "%2F",
     username: str = "guest",
     password: str = "guest",

@@ -20,11 +20,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reports-dir", default="reports")
     parser.add_argument("--metrics-file", default=None, help="Path to metrics JSON snapshot")
     parser.add_argument("--queue-name", default="logs.raw")
-    parser.add_argument("--mgmt-url", default="http://localhost:15672")
+    parser.add_argument("--mgmt-url", default="http://127.0.0.1:15672")
     parser.add_argument("--skip-queue-fetch", action="store_true")
     parser.add_argument(
         "--metrics-url",
-        default="http://localhost:8000/metrics",
+        default="http://127.0.0.1:8000/metrics",
         help="Fallback metrics endpoint when no JSON snapshot exists in reports/",
     )
     parser.add_argument(

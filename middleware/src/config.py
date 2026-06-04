@@ -21,7 +21,7 @@ OUTPUT_DIR = getenv("OUTPUT_DIR", "output")
 
 @dataclass(frozen=True)
 class MiddlewareConfig:
-    amqp_url: str = getenv("AMQP_URL", "amqp://guest:guest@localhost:5672/")
+    amqp_url: str = getenv("AMQP_URL", "amqp://guest:guest@127.0.0.1:5672/")
     exchange_name: str = getenv("EXCHANGE_NAME", "logs")
     queue_name: str = getenv("QUEUE_NAME", "logs.raw")
     prefetch_count: int = int(getenv("PREFETCH_COUNT", "50"))

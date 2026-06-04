@@ -1,13 +1,22 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
 .pytest_cache/
 .mypy_cache/
 
+# Çalışma çıktıları (üretilen loglar, metrikler, grafikler)
 output/
 reports/
 
+# Dahili geliştirme raporları (faz raporları, şablon — teslim raporu değil)
+docs/phase-reports/
+docs/report-template.md
+
+# PDF export (Markdown'dan üretilir; EDS'ye ayrı yüklenir)
+docs/*.pdf
+
+# OS / gizli
 .DS_Store
 Thumbs.db
-
 .env

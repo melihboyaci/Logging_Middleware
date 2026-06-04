@@ -6,7 +6,7 @@ from os import getenv
 
 @dataclass(frozen=True)
 class ProducerConfig:
-    amqp_url: str = getenv("AMQP_URL", "amqp://guest:guest@localhost:5672/")
+    amqp_url: str = getenv("AMQP_URL", "amqp://guest:guest@127.0.0.1:5672/")
     exchange_name: str = getenv("EXCHANGE_NAME", "logs")
     routing_key: str = getenv("ROUTING_KEY", "logs.raw")
 

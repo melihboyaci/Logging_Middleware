@@ -17,16 +17,28 @@ OUTPUT = ROOT / "output"
 REPORTS = ROOT / "reports"
 QUEUE_SAMPLES = REPORTS / "queue_samples.jsonl"
 
+# Windows'ta localhost bazen IPv6 (::1) cozumlenir; Docker portlari IPv4 uzerindedir.
+MIDDLEWARE_HEALTH_URL = "http://127.0.0.1:8000/health"
+MIDDLEWARE_METRICS_URL = "http://127.0.0.1:8000/metrics"
+RABBITMQ_MGMT_URL = "http://127.0.0.1:15672"
+
 
 def run(command: list[str], timeout: int = 180) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command,
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
+    try:
+        return subprocess.run(
+            command,
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.CalledProcessError as exc:
+        if exc.stdout:
+            print(exc.stdout, file=sys.stderr)
+        if exc.stderr:
+            print(exc.stderr, file=sys.stderr)
+        raise
 
 
 def wait_for_health(url: str, timeout_seconds: int = 120) -> None:
@@ -51,7 +63,7 @@ def assert_outputs() -> None:
 
 
 def fetch_metrics_payload() -> dict:
-    with urlopen("http://localhost:8000/metrics", timeout=10) as response:
+    with urlopen(MIDDLEWARE_METRICS_URL, timeout=10) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -85,7 +97,7 @@ def sample_queue_depth(duration_seconds: int = 10, interval_seconds: float = 1.0
     elapsed = 0.0
     while elapsed <= duration_seconds:
         try:
-            depth = fetch_queue_depth("logs.raw")
+            depth = fetch_queue_depth("logs.raw", mgmt_url=RABBITMQ_MGMT_URL)
             row = {"elapsed_s": round(elapsed, 2), "depth": depth}
             with QUEUE_SAMPLES.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(row) + "\n")
@@ -100,14 +112,19 @@ def main() -> None:
     clean_artifacts()
 
     print("E2E smoke: starting compose services...")
-    run(["docker", "compose", "up", "-d", "--build"])
+    run(["docker", "compose", "up", "-d", "--build", "rabbitmq", "middleware"])
     try:
         print("E2E smoke: waiting middleware health...")
-        wait_for_health("http://localhost:8000/health")
+        wait_for_health(MIDDLEWARE_HEALTH_URL)
 
         print("E2E smoke: sending sample load with producer publish...")
         run(
             [
+                "docker",
+                "compose",
+                "run",
+                "--rm",
+                "producer",
                 "python",
                 "-m",
                 "producer.src.main",

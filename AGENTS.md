@@ -40,7 +40,7 @@ docker compose logs -f middleware   # akisi izle
 docker compose run --rm producer python -m producer.src.main --total 100000 --rate 5000 --batch 200
 ```
 
-Ciktilar host'ta `./output/{sysadmin.md, developer.json, security.csv, ...}` altina yazilir. Metrikler: `http://localhost:8000/metrics`. RabbitMQ UI: `http://localhost:15672` (guest/guest).
+Ciktilar host'ta `./output/{sysadmin.md, developer.json, security.csv, ...}` altina yazilir. Metrikler: `http://127.0.0.1:8000/metrics`. RabbitMQ UI: `http://127.0.0.1:15672` (guest/guest). Windows'ta `localhost` yerine `127.0.0.1` tercih edilir.
 
 ## Kodlama konvansiyonlari
 

@@ -87,7 +87,7 @@ dm-middleware | INFO:     Uvicorn running on http://0.0.0.0:8000
 
 ### Adım 2.2 — RabbitMQ Yönetim Arayüzü
 
-**Tarayıcıyı aç → `http://localhost:15672`** *(kullanıcı adı: guest, şifre: guest)*
+**Tarayıcıyı aç → `http://127.0.0.1:15672`** *(kullanıcı adı: guest, şifre: guest)*
 
 > "Bu RabbitMQ'nun kendi yönetim paneli. Buradan kuyruğun anlık durumunu izleyebiliyoruz."
 
@@ -201,7 +201,7 @@ if result is None:
 
 > "Sayaç artışı consumer tarafında tutuluyor. Böylece pipeline yalnızca karar veriyor, metrik toplama ise mesaj tüketim katmanında merkezî kalıyor."
 
-**→ Tarayıcıda `http://localhost:8000/metrics` adresini aç:**
+**→ Tarayıcıda `http://127.0.0.1:8000/metrics` adresini aç:**
 
 ```json
 {
@@ -412,7 +412,7 @@ docker compose run --rm producer python -m producer.src.main --total 5000 --rate
 
 > "Şimdi saniyede 2000 log gönderiyoruz. RabbitMQ panelini izleyelim."
 
-**→ `http://localhost:15672` → Queues → `logs.raw`**
+**→ `http://127.0.0.1:15672` → Queues → `logs.raw`**
 
 > "Kuyruk derinliği dalgalanıyor ama birikmiyor — middleware yetişiyor. Gerçek sistemde middleware daha yavaş olsaydı kuyruk büyürdü, bu da ölçeklendirme ihtiyacına işaret ederdi."
 
@@ -444,7 +444,7 @@ docker compose run --rm producer python -m producer.src.main --total 5000 --rate
 
 ### Adım 5.3 — Metrik API'sini Göster
 
-**Tarayıcıda: `http://localhost:8000/metrics`**
+**Tarayıcıda: `http://127.0.0.1:8000/metrics`**
 
 ```json
 {
@@ -517,8 +517,8 @@ Video çekiminden önce aşağıdakilerin hazır olduğundan emin ol:
 
 - [ ] `docker compose up --build rabbitmq middleware` sorunsuz tamamlanıyor
 - [ ] Ayrı terminalde `docker compose run --build --rm producer python -m producer.src.main --total 200 --rate 50 --batch 20` çalışıyor
-- [ ] `http://localhost:15672` RabbitMQ paneli açılıyor (guest/guest)
-- [ ] `http://localhost:8000/health` → `{"status": "ok"}` dönüyor
+- [ ] `http://127.0.0.1:15672` RabbitMQ paneli açılıyor (guest/guest)
+- [ ] `http://127.0.0.1:8000/health` → `{"status": "ok"}` dönüyor
 - [ ] `output/` klasöründe üç dosya oluşuyor (`sysadmin.md`, `developer.json`, `security.csv`)
 - [ ] `python scripts/e2e_smoke.py` ve `python scripts/performance_report.py --reports-dir reports --skip-queue-fetch` en az bir kez çalıştırıldı
 - [ ] `reports/e2e_metrics.json` ve `reports/queue_samples.jsonl` oluştu
@@ -533,8 +533,8 @@ Video çekiminden önce aşağıdakilerin hazır olduğundan emin ol:
 
 ### Tarayıcı sekmeleri
 
-1. `http://localhost:15672` — RabbitMQ Yönetim Paneli
-2. `http://localhost:8000/metrics` — Middleware Metrikleri
+1. `http://127.0.0.1:15672` — RabbitMQ Yönetim Paneli
+2. `http://127.0.0.1:8000/metrics` — Middleware Metrikleri
 3. GitHub repo → Actions sekmesi
 
 ### Editörde açık dosyalar
