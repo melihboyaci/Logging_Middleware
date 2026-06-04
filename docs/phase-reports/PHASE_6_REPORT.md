@@ -1,83 +1,88 @@
-# Faz 6 Detayli Rapor - Test, README, Rapor ve Video Hazirligi
+# Faz 6 Raporu — Testler, README ve Teslim Hazırlığı
 
-Tarih: 2026-06-01  
-Faz Durumu: Tamamlandi
+**Tarih:** 2026-06-01  
+**Durum:** Tamamlandı
 
-## 1) Faz Ozeti
+---
 
-Faz 6'da teslime yonelik son dokumantasyon katmani tamamlandi:
+## 1. Bu Fazın Amacı
 
-- Proje README
-- Odev rapor sablonu
-- Video anlatim akis dokumani
-- Tum testlerin final kosusu
+Teknik geliştirme büyük ölçüde tamamlandı. Bu fazda projenin bir başkası tarafından anlaşılabilir ve teslim edilebilir olmasını sağlayan dokümanlar hazırlandı:
 
-Bu fazla birlikte proje hem teknik hem de teslim sureci acisindan paketlenebilir hale geldi.
+- Projeyi tanıtan ve nasıl çalıştırılacağını açıklayan README
+- Ödev raporu yazmayı kolaylaştıran şablon
+- Video demosu için hazır senaryo
+- Tüm testlerin son toplu koşusu
 
-## 2) Yapilan Teknik Isler
+---
 
-### 2.1 README
+## 2. Yapılan Çalışmalar
 
-`README.md` eklendi:
+### 2.1 README Dosyası
 
-- Mimari ozet
-- Calistirma adimlari
-- Producer/middleware komutlari
-- Test komutlari
-- Dokumantasyon linkleri
+`README.md` şu bölümlerden oluşuyor:
 
-### 2.2 Rapor Sablonu
+- Projenin ne yaptığının kısa açıklaması
+- Projeyi başlatmak için gereken komutlar (`docker compose up`)
+- Producer ve middleware için özel komutlar
+- Test nasıl çalıştırılır
+- Çıktı dosyalarının nerede bulunduğu
+- Dokümantasyon bağlantıları
 
-`docs/report-template.md` eklendi:
+### 2.2 Ödev Raporu Şablonu
 
-- Mimari
-- Gereksinim karsilama
-- Tasarim kaliplari
-- Performans/stres
-- Sonuc bolumleri
+`docs/report-template.md` dosyası, ödevi değerlendirecek hocaya sunulacak yazılı raporun iskeletini oluşturuyor. Şablon şu bölümleri içeriyor:
 
-Bu dosya EDSYE rapor yazimini hizlandiracak sablon olarak kullanilabilir.
+- Mimari özeti ve tasarım kararları
+- Gereksinimlerin nasıl karşılandığı
+- Kullanılan tasarım kalıpları ve nerede kullanıldıkları
+- Stres testi sonuçları ve performans değerlendirmesi
+- Sonuç ve değerlendirme
 
-### 2.3 Video Script
+Bu şablona veri ve yorumlar eklenerek ödev raporu tamamlanabilir.
 
-`docs/video-script.md` eklendi:
+### 2.3 Video Demo Senaryosu
 
-- 15 dakikalik anlatim sirasi
-- Canli demo adimlari
-- 4 gereksinimin gosterimi
-- Tasarim kalibi anlatim noktalari
+`docs/video-script.md` dosyası yaklaşık 15 dakikalık bir sunum için adım adım rehber içeriyor:
 
-## 3) Degisen / Eklenen Dosyalar
+- Mimariyi tahtada anlatma bölümü
+- Canlı demo: sistemin çalışırken gösterilmesi
+- Her bir tasarım kalıbının kodda gösterilmesi
+- Performans/stres testinin canlı koşulması
 
-- `README.md`
-- `docs/report-template.md`
-- `docs/video-script.md`
-- `docs/STATE.md`
+### 2.4 Son Toplu Test
 
-## 4) Calistirilan Testler/Komutlar
+Tüm faz testleri birlikte koşuldu; Faz 1'den bu yana yazılan 14 test başarıyla geçti.
 
-```bash
-python -m pytest -q
-```
+---
 
-Lint/diagnostik kontrolu:
+## 3. Değişen / Oluşturulan Dosyalar
 
-- `README.md`
-- `docs/report-template.md`
-- `docs/video-script.md`
+- `README.md` (yeni)
+- `docs/report-template.md` (yeni)
+- `docs/video-script.md` (yeni)
+- `docs/STATE.md` (güncellendi)
 
-## 5) Test Sonuclari
+---
 
-- Tam suite: **14 passed**
-- Lint: **Yeni hata yok**
+## 4. Test Sonuçları
 
-## 6) Riskler / Acik Maddeler
+| Komut | Sonuç |
+|-------|-------|
+| `pytest -q` (tüm testler) | **14/14 test geçti** |
+| Linter kontrolü | Yeni hata yok |
 
-- Sonraki adimda CI pipeline tanimi (opsiyonel) eklenebilir.
-- Performans grafiklerini otomatik cizen script (matplotlib) Faz 5 altyapisinin uzerine iyilestirme olarak eklenebilir.
+---
 
-## 7) Sonraki Adim
+## 5. Açık Maddeler
 
-- Final commit/push
-- Video cekimi
-- Raporu `docs/report-template.md` uzerinden tamamlama
+- Bir sonraki isteğe bağlı adım olarak CI (sürekli entegrasyon) pipeline'ı eklenebilir; her push'ta testler otomatik koşar.
+- Performans grafiklerini otomatik oluşturan bir script (Faz 5 altyapısının üstüne) ekleme planlanıyor.
+
+---
+
+## 6. Sonraki Adım
+
+- Son commit ve GitHub'a push
+- Video çekimi
+- `docs/report-template.md` kullanılarak ödev raporunun tamamlanması

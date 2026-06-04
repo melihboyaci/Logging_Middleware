@@ -1,154 +1,206 @@
 # CENG302 Logging Middleware
 
-RabbitMQ tabanli veri middleware odev projesi.
+RabbitMQ tabanlı, KVKK uyumlu bir log middleware projesidir. Sistem üç bileşenden oluşur: log üreten **Producer**, logları işleyen **Middleware** ve iki uygulama arasında tampon görevi gören **RabbitMQ** broker.
 
-## Proje Ozeti
+Bu belge, projeyi ilk kez inceleyenler ile demo veya sunum sırasında hızlı referans ihtiyacı duyanlar için hazırlanmıştır.
 
-Sistem 2 uygulama modulu + 1 altyapi bileseninden olusur:
+## Özet
 
-- Producer (log uretir ve RabbitMQ'ya yayinlar)
-- Middleware (loglari anonimlestirir, filtreler, zenginlestirir, role gore formatlayip dosyaya yazar)
-- RabbitMQ (mesaj broker)
+| Bileşen | Görev |
+|---------|--------|
+| Producer | Borsa benzeri senaryolardan log üretir ve `logs.raw` kuyruğuna yayımlar |
+| RabbitMQ | Mesajları kuyrukta tutar; yüksek trafikte tampon sağlar |
+| Middleware | Logları işler, role göre dosyaya yazar; `/health` ve `/metrics` sunar |
 
-Pipeline:
+İşleme hattı: **Anonimleştir → Filtrele → Zenginleştir → Biçimlendir ve yönlendir**
 
-`Anonymize -> Filter -> Enrich -> Format/Route`
+## Mimari
 
-## Klasorler
+### Sistem akışı
 
-- `producer/`: veri uretimi + publisher + stress tools
-- `middleware/`: consumer + pipeline + api + metrics
-- `shared/`: ortak `LogRecord` semasi
-- `tests/`: faz bazli testler
-- `docs/`: kararlar, specs, faz state ve faz raporlari
-- `output/`: role bazli cikti dosyalari
-- `reports/`: metrics/stress raporlari
+```mermaid
+flowchart LR
+    Producer["Producer (Docker)"] -->|"yayın: logs.raw"| RabbitMQ["RabbitMQ"]
+    RabbitMQ -->|"tüketim: logs.raw"| Middleware["Middleware (Docker)"]
+    Middleware --> Output["output/"]
+    Middleware --> Metrics["/health, /metrics"]
+```
 
-## Hizli Baslangic
+### Middleware pipeline
 
-Gereksinimler:
+```mermaid
+flowchart LR
+    RawLog["Ham log"] --> Anonymize["KVKK anonimleştirme"]
+    Anonymize --> Filter["Gürültü filtresi"]
+    Filter --> Enrich["Zenginleştirme"]
+    Enrich --> Route["Biçimlendir ve yönlendir"]
+    Route --> Sysadmin["sysadmin.md"]
+    Route --> Developer["developer.json"]
+    Route --> Security["security.csv"]
+```
+
+## Temel özellikler
+
+- **KVKK maskeleme:** TC kimlik, kredi kartı, IBAN, SWIFT/BIC ve e-posta alanları diske ham hâliyle yazılmaz.
+- **Filtreleme:** `DEBUG`, `INFO`, `WARNING` seviyeleri ile `docker.*` kaynaklı altyapı gürültüsü elenir.
+- **Zenginleştirme:** `sender_id`, `transaction_no`, `criticality` ve role göre mesaj etiketleri eklenir.
+- **Rol bazlı çıktı:** `sysadmin` → Markdown, `developer` → JSONL, `security` → CSV. HTML biçimi yapılandırma ile desteklenir.
+- **Tasarım kalıpları:** Chain of Responsibility, Strategy, Decorator, Factory, Singleton.
+- **CI/CD:** pytest, Docker Compose doğrulaması, E2E smoke testi ve artifact yükleme.
+
+## Gereksinimler
 
 - Python 3.11+
-- Docker + Docker Compose
+- Docker ve Docker Compose
+- (İsteğe bağlı) GitHub Actions artifact incelemesi için GitHub hesabı
 
-Kurulum:
+## Hızlı başlangıç
+
+### 1. Bağımlılıkları kurun
 
 ```bash
 python -m pip install -r producer/requirements.txt
 python -m pip install -r middleware/requirements.txt
+python -m pip install -r requirements-dev.txt
 python -m pip install pytest
 ```
 
-Container'lari baslat:
+### 2. Demo için servisleri başlatın
+
+Yalnızca RabbitMQ ve Middleware'i ayağa kaldırın; Producer'ı ayrı terminalde kontrollü çalıştırın:
 
 ```bash
-docker compose up --build
+docker compose up --build rabbitmq middleware
 ```
 
-## Producer Komutlari
-
-Dry run:
+### 3. Producer ile örnek yük gönderin
 
 ```bash
-python -m producer.src.main --dry-run --total 100 --batch 20 --rate 200
+docker compose run --build --rm producer python -m producer.src.main --total 200 --rate 50 --batch 20
 ```
 
-RabbitMQ'ya publish:
+Beklenen çıktı örneği:
+
+```text
+Publish done. published=200 elapsed=4.10s throughput=48.70 log/s
+```
+
+### 4. Sistemi kapatın
 
 ```bash
-python -m producer.src.main --total 1000 --batch 100 --rate 500
+docker compose down
 ```
 
-Stress profil dosyasi uret:
+## Demo ve sunumda kullanılacak adresler
+
+| Kaynak | Adres / konum |
+|--------|----------------|
+| RabbitMQ yönetim paneli | http://localhost:15672 (`guest` / `guest`) |
+| Sağlık kontrolü | http://localhost:8000/health |
+| Metrikler | http://localhost:8000/metrics |
+| Çıktı dosyaları | `output/` |
+| Performans grafikleri | `reports/plots/` |
+| Sunum akış rehberi | `docs/SUNUM_RAPORU.md` |
+
+## Çıktı dosyaları
+
+Varsayılan rol → biçim eşlemesi:
+
+| Rol | Biçim | Dosya |
+|-----|--------|-------|
+| `sysadmin` | Markdown | `output/sysadmin.md` |
+| `developer` | JSONL (satır başına bir JSON nesnesi) | `output/developer.json` |
+| `security` | CSV | `output/security.csv` |
+
+Eşleme `middleware/src/config.py` içindeki `ROLE_FORMAT_MAP` ile değiştirilebilir.
+
+## Performans raporu ve grafikler
+
+Dolu grafikler için önerilen sıra:
 
 ```bash
-python -m producer.src.stress.load_runner --profile ramp --reports-dir reports --max-total 50000
+python scripts/e2e_smoke.py
+python scripts/performance_report.py --reports-dir reports --skip-queue-fetch
 ```
 
-## Middleware Endpoints
+Üretilen dosyalar:
 
-- `GET /health`
-- `GET /metrics`
+| Dosya | Açıklama |
+|-------|----------|
+| `reports/e2e_metrics.json` | Metrik anlık görüntüsü |
+| `reports/queue_samples.jsonl` | Kuyruk derinliği örnekleri |
+| `reports/performance_summary.md` | Özet metin raporu |
+| `reports/plots/*.png` | Pipeline, gecikme ve kuyruk grafikleri |
 
-Ornek:
+Grafikler yerelde üretildikten sonra aşağıda görünür:
 
-```bash
-curl http://localhost:8000/health
-curl http://localhost:8000/metrics
-```
+![Pipeline sayaçları](reports/plots/pipeline_counts.png)
 
-## Cikti Dosyalari
+![Gecikme yüzdelikleri](reports/plots/latency_percentiles.png)
 
-Varsayilan role->format eslesmesi:
+![Kuyruk derinliği](reports/plots/queue_depth.png)
 
-- `sysadmin -> output/sysadmin.md`
-- `developer -> output/developer.json`
-- `security -> output/security.csv`
+Grafikler boş görünüyorsa önce `scripts/e2e_smoke.py` çalıştırın; bu betik metrik anlık görüntüsünü ve kuyruk örneklerini oluşturur.
 
-Opsiyonel olarak HTML de desteklenir (konfig ile).
+## Betikler (`scripts/`)
+
+| Betik | İşlev |
+|-------|--------|
+| `e2e_smoke.py` | Docker ortamında uçtan uca test: compose aç/kapa, log gönder, çıktı ve metrik doğrula |
+| `performance_report.py` | Metrik ve kuyruk verisinden PNG grafikleri ve Markdown özet üretir |
 
 ## Testler
 
-Tum testleri calistir:
+Tüm test suite:
 
 ```bash
 python -m pytest -q
 ```
 
-E2E smoke (docker gerekir):
+E2E smoke testi (Docker gerekir):
 
 ```bash
 python scripts/e2e_smoke.py
 ```
 
-Faz bazli:
+Faz bazlı test dosyaları: `tests/test_phase1_producer.py` … `tests/test_phase9_performance_report.py`
 
-```bash
-python -m pytest -q tests/test_phase1_producer.py
-python -m pytest -q tests/test_phase2_middleware.py
-python -m pytest -q tests/test_phase3_pipeline.py
-python -m pytest -q tests/test_phase4_formatting.py
-python -m pytest -q tests/test_phase5_metrics_and_stress.py
-```
+## Tasarım kalıpları ve kod konumları
 
-## Dokumantasyon
+| Kalıp | Konum |
+|-------|--------|
+| Chain of Responsibility | `middleware/src/pipeline/` |
+| Strategy | `middleware/src/formatting/` |
+| Decorator | `middleware/src/enrichment/enrichers.py` |
+| Factory | `producer/src/generators/log_factory.py`, `middleware/src/formatting/formatter_factory.py` |
+| Singleton | `middleware/src/metrics/collector.py` |
 
-- Mimari kararlar: `docs/DECISIONS.md`
-- Davranis sozlesmesi: `docs/SPECS.md`
-- Faz durumu: `docs/STATE.md`
-- Faz raporlari: `docs/phase-reports/`
+## Proje yapısı
 
-## Performans Raporu (Faz 9)
-
-```bash
-python -m pip install -r requirements-dev.txt
-python scripts/performance_report.py --reports-dir reports
-```
-
-Uretilen ciktilar:
-
-- `reports/performance_summary.md`
-- `reports/plots/pipeline_counts.png`
-- `reports/plots/latency_percentiles.png`
-- `reports/plots/queue_depth.png`
-
-E2E smoke calistirildiginde `reports/queue_samples.jsonl` dosyasi da olusur.
+| Klasör | İçerik |
+|--------|--------|
+| `producer/` | Log üretimi, RabbitMQ yayımlayıcı, stres test araçları |
+| `middleware/` | Consumer, pipeline, biçimlendirme, API, metrikler |
+| `shared/` | Ortak `LogRecord` şeması |
+| `tests/` | Faz bazlı birim ve entegrasyon testleri |
+| `docs/` | Özellikler, kararlar, faz raporları, sunum rehberi |
+| `output/` | Rol bazlı çıktı dosyaları |
+| `reports/` | Metrik, E2E ve performans raporları |
 
 ## CI/CD
 
-GitHub Actions workflow:
+Workflow dosyası: `.github/workflows/ci.yml`
 
-- `.github/workflows/ci.yml`
-  - `tests` job: dependency install + `pytest` + `docker compose config`
-  - `e2e-smoke` job: `scripts/e2e_smoke.py` calistirir
-  - `output/` ve `reports/` artifact olarak upload edilir
+| Job | Yaptığı iş |
+|-----|------------|
+| `tests` | Bağımlılık kurulumu, `pytest`, `docker compose config` doğrulaması |
+| `e2e-smoke` | Gerçek Docker ortamında E2E test, ardından performans raporu ve grafik üretimi |
+| Artifact | `output/` ve `reports/` GitHub'a yüklenir |
 
-## Video / Teslim Icigi
+## Ek dokümantasyon
 
-Video anlatiminda su akisi takip edilebilir:
-
-1. Sistem mimarisi (Producer -> RabbitMQ -> Middleware)
-2. KVKK anonimlestirme canli ornegi
-3. Filtreleme ve role bazli ciktilar
-4. Stres profili ve metrics raporlari
-5. Tasarim kaliplari (CoR, Strategy, Decorator, Factory, Singleton)
+- Davranış sözleşmesi: [`docs/SPECS.md`](docs/SPECS.md)
+- Mimari kararlar: [`docs/DECISIONS.md`](docs/DECISIONS.md)
+- Faz durumu: [`docs/STATE.md`](docs/STATE.md)
+- Faz raporları: [`docs/phase-reports/`](docs/phase-reports/)
+- Sunum rehberi: [`docs/SUNUM_RAPORU.md`](docs/SUNUM_RAPORU.md)

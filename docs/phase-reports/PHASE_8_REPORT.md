@@ -1,105 +1,95 @@
-# Faz 8 Detayli Rapor - CI/CD Otomasyonu
+# Faz 8 Raporu — CI/CD Otomasyonu (GitHub Actions)
 
-Tarih: 2026-06-01  
-Faz Durumu: Tamamlandi
+**Tarih:** 2026-06-01  
+**Durum:** Tamamlandı
 
-## 1) Faz Ozeti
+---
 
-Faz 8'de proje icin GitHub Actions tabanli CI/CD akisi eklendi.
+## 1. Bu Fazın Amacı
 
-Workflow iki ana job'dan olusuyor:
+Kodun her değişikliğinde "testler otomatik koşulsun, hata varsa uyarsın" mekanizması kuruldu. Bu mekanizmaya **CI/CD** (Sürekli Entegrasyon / Sürekli Dağıtım) deniyor.
 
-- `tests`: dependency install + pytest + compose config dogrulama
-- `e2e-smoke`: E2E smoke script calistirma + artifact upload
+Artık her `git push` veya pull request açıldığında GitHub sunucuları otomatik olarak şunları yapıyor:
 
-Bu fazla birlikte repository push/PR aninda otomatik kalite kontrol akisi kazanmis oldu.
+1. Bağımlılıkları kuruyor
+2. Tüm testleri koşuyor
+3. Docker yapılandırmasını doğruluyor
+4. Uçtan uca smoke testini çalıştırıyor
+5. Çıktı dosyalarını arşivleyip indirilebilir hâle getiriyor
 
-## 2) Yapilan Teknik Isler
+---
 
-### 2.1 GitHub Actions Workflow
+## 2. Yapılan Çalışmalar
 
-Yeni dosya:
+### 2.1 GitHub Actions İş Akışı
 
-- `.github/workflows/ci.yml`
+`.github/workflows/ci.yml` dosyası oluşturuldu. İki ana iş tanımlandı:
 
-Icerik:
+#### `tests` İşi
 
-- Trigger: `push` + `pull_request` (main)
-- Job 1 (`tests`):
-  - Python 3.11 setup
-  - producer + middleware dependencies install
-  - `pytest -q`
-  - `docker compose config`
-- Job 2 (`e2e-smoke`, tests job'ina bagli):
-  - `python scripts/e2e_smoke.py`
-  - `output/` ve `reports/` artifact upload
+- Python 3.11 kurulumu
+- `requirements.txt` dosyalarından bağımlılıkların yüklenmesi
+- `pytest -q` ile tüm testlerin koşulması
+- `docker compose config` ile Docker yapılandırmasının doğrulanması
 
-### 2.2 README CI Bolumu
+#### `e2e-smoke` İşi (`tests` başarılıysa çalışır)
 
-`README.md` guncellendi:
+- E2E smoke scriptinin (`scripts/e2e_smoke.py`) koşulması
+- `output/` ve `reports/` klasörlerinin GitHub'a artifact olarak yüklenmesi — böylece her çalıştırmada üretilen dosyalar indirilebilir
 
-- CI workflow ozeti eklendi
-- Job bazli ne calistigi dokumante edildi
+Bu yapı sayesinde bir değişiklik sistemi bozarsa anında fark ediliyor.
 
-### 2.3 Faz 8 Testi
+### 2.2 README Güncellemesi
 
-Yeni test:
+`README.md` dosyasına CI bölümü eklendi: hangi işin ne yaptığı, hangi durumda yeşil/kırmızı olacağı açıklandı.
 
-- `tests/test_phase8_ci.py`
-  - workflow dosyasinin varligini ve temel job/komut icerigini dogruluyor
+### 2.3 CI Testi
 
-## 3) Degisen / Eklenen Dosyalar
+`tests/test_phase8_ci.py` dosyası şunları kontrol ediyor:
 
-- `.github/workflows/ci.yml`
-- `README.md`
-- `tests/test_phase8_ci.py`
-- `docs/STATE.md`
+- `.github/workflows/ci.yml` dosyasının var olduğu
+- İçinde `tests` ve `e2e-smoke` iş tanımlarının bulunduğu
+- `pytest` komutunun iş akışında yer aldığı
 
-## 4) Calistirilan Testler/Komutlar
+---
 
-1. Tum testler:
+## 3. Değişen / Oluşturulan Dosyalar
 
-```bash
-python -m pytest -q
-```
+- `.github/workflows/ci.yml` (yeni)
+- `tests/test_phase8_ci.py` (yeni)
+- `README.md` (CI bölümü eklendi)
 
-2. Compose dogrulama:
+---
 
-```bash
-docker compose -f d:\my-projects\yazılım-ödev-middleware\docker-compose.yml config
-```
+## 4. Çalıştırılan Testler
 
-3. Lint/diagnostik kontrolu:
+| Komut | Sonuç |
+|-------|-------|
+| `pytest -q` (tüm testler) | **17/17 test geçti** |
+| `docker compose config` | Başarılı |
+| Linter kontrolü | Yeni hata yok |
 
-- `.github/workflows/ci.yml`
-- `tests/test_phase8_ci.py`
-- `README.md`
+---
 
-## 5) Test Sonuclari
+## 5. Açık Maddeler
 
-- Pytest: **17 passed**
-- Compose config: **Basarili**
-- Lint: **Yeni hata yok**
+- E2E smoke işi Docker'a bağımlı; GitHub'ın paylaşımlı runner'larında Docker başlama süresi ortama göre değişebilir. Gerekirse zaman aşımı ayarları güncellenmeli.
+- Şu an CI yalnızca "geçti/geçmedi" kontrolü yapıyor. İleride gecikme eşiği (örn. p99 < 200ms olmalı) gibi performans ölçütleri de CI kontrolüne eklenebilir.
 
-## 6) Riskler / Acik Maddeler
+---
 
-- E2E smoke job Docker'a bagimli oldugu icin GitHub hosted runner farkliliklarinda zamanlama ayari gerekebilir.
-- CI su an temel kalite kapisi; performans threshold dogrulamalari (latency/throughput limitleri) eklenebilir.
+## 6. Sonraki Faz
 
-## 7) Sonraki Faz
+Faz 9'da performans raporlaması otomatize ediliyor:
 
-Faz 9 (opsiyonel):
+- RabbitMQ kuyruğundaki mesaj derinliği izlenecek
+- Gecikme ve işlem sayıları grafiklerle görselleştirilecek
+- Bu grafikler CI artifact'larına otomatik eklenecek
 
-- Performance plot automation
-- RabbitMQ queue depth metric ceker script
-- CI artifact'larina grafik ekleme
+---
 
-## 8) Revizyon - Commit ve Push Bilgisi
-
-Bu rapor, kullanici istegi uzerine commit/push adimi sonrasinda guncellendi.
+## Ek — Commit Bilgisi
 
 - Commit: `25b9a3e`
 - Mesaj: `Add phase 8 CI/CD workflow with GitHub Actions and tests.`
-- Branch: `main`
-- Remote: `origin`
-- Push: `main -> origin/main` basarili
+- Push: `main → origin/main` başarılı

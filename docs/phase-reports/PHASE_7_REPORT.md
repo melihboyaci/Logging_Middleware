@@ -1,108 +1,86 @@
-# Faz 7 Detayli Rapor - E2E Smoke Otomasyonu
+# Faz 7 Raporu — Uçtan Uca Otomatik Doğrulama (E2E Smoke Testi)
 
-Tarih: 2026-06-01  
-Faz Durumu: Tamamlandi
+**Tarih:** 2026-06-01  
+**Durum:** Tamamlandı
 
-## 1) Faz Ozeti
+---
 
-Faz 7'de proje icin otomatik uctan uca smoke dogrulamasi eklendi.
+## 1. Bu Fazın Amacı
 
-Kazanim:
+"Sistemin gerçekten çalışıp çalışmadığını" tek bir komutla doğrulayan bir otomasyon eklendi. Bu tür testler yazılım dünyasında **E2E (End-to-End) smoke testi** olarak adlandırılır: sistemin her bir parçasını değil, tamamının birlikte doğru çalışıp çalışmadığını hızlıca kontrol eder.
 
-- Tek komutla compose ayağa kalkar
-- Middleware health beklenir
-- Producer ile ornek yuk gonderilir
-- `output/` dosyalari ve `/metrics` dogrulanir
-- Servisler guvenli sekilde kapatilir
+---
 
-## 2) Yapilan Teknik Isler
+## 2. Yapılan Çalışmalar
 
-### 2.1 Compose Artifact Mount'lari
+### 2.1 Docker Çıktı Bağlantıları
 
-`docker-compose.yml` guncellendi:
+`docker-compose.yml` dosyası güncellenerek container içindeki klasörler ev sahibi makineye (host) yansıtıldı:
 
-- `middleware` icin:
-  - `./output:/app/output`
-  - `./reports:/app/reports`
-- `producer` icin:
-  - `./reports:/app/reports`
+- `./output` → middleware container'ının çıktı klasörü
+- `./reports` → hem middleware hem producer'ın rapor klasörü
 
-Bu sayede container icindeki ciktilar host tarafinda gorunur hale geldi.
+Bu sayede test scripti container'ın içine girmeden çıktı dosyalarını doğrulayabiliyor.
 
-### 2.2 E2E Smoke Script
+### 2.2 E2E Smoke Scripti
 
-`scripts/e2e_smoke.py` eklendi.
+`scripts/e2e_smoke.py` tek bir Python dosyasında şu adımları otomatik olarak gerçekleştiriyor:
 
-Akis:
+| Adım | Ne Yapılıyor |
+|------|-------------|
+| 1 | Önceki test çalıştırmalarından kalan çıktılar temizleniyor |
+| 2 | `docker compose up --build` komutuyla tüm servisler ayağa kaldırılıyor |
+| 3 | Middleware'in `/health` adresi başarılı yanıt verinceye kadar bekleniyor |
+| 4 | Producer belirli sayıda log üretip gönderiyor |
+| 5 | `output/` klasöründe beklenen dosyaların oluştuğu kontrol ediliyor |
+| 6 | `/metrics` endpoint'inin düzgün yanıt verdiği doğrulanıyor |
+| 7 | `docker compose down` ile servisler temiz şekilde kapatılıyor |
 
-1. Eski output artefaktlarini temizle
-2. `docker compose up -d --build`
-3. `GET /health` ile middleware hazirligini bekle
-4. Producer ile ornek veri publish et
-5. `output` dosyalarini ve `GET /metrics` sonuclarini dogrula
-6. `docker compose down`
+Herhangi bir adım başarısız olursa test hatalı çıkıyor ve nerede takıldığı bildiriliyor.
 
-### 2.3 Faz 7 Testi
+### 2.3 Faz 7 Birim Testi
 
-`tests/test_phase7_e2e_script.py` eklendi:
+`tests/test_phase7_e2e_script.py` dosyası şunları doğruluyor:
 
-- Script varlik/icerik smoke kontrolu
-- Stress runner `burst` profil cikti testi
+- E2E smoke scriptinin varlığı ve temel içeriği
+- Stres testi burst profilinin beklenen çıktıyı üretmesi
 
-## 3) Degisen / Eklenen Dosyalar
+---
 
-- `docker-compose.yml` (guncellendi)
-- `scripts/e2e_smoke.py`
-- `tests/test_phase7_e2e_script.py`
+## 3. Değişen / Oluşturulan Dosyalar
+
+- `docker-compose.yml` (klasör bağlantıları eklendi)
+- `scripts/e2e_smoke.py` (yeni)
+- `tests/test_phase7_e2e_script.py` (yeni)
 - `README.md` (E2E smoke komutu eklendi)
-- `docs/STATE.md`
 
-## 4) Calistirilan Testler/Komutlar
+---
 
-1. Faz 1-7 test suite:
+## 4. Çalıştırılan Testler
 
-```bash
-python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py tests/test_phase4_formatting.py tests/test_phase5_metrics_and_stress.py tests/test_phase7_e2e_script.py
-```
+| Komut | Sonuç |
+|-------|-------|
+| `pytest` (Faz 1-7) | **16/16 test geçti** |
+| `docker compose config` | Başarılı |
+| Linter kontrolü | Yeni hata yok |
 
-2. Compose dogrulama:
+---
 
-```bash
-docker compose -f d:\my-projects\yazılım-ödev-middleware\docker-compose.yml config
-```
+## 5. Açık Maddeler
 
-3. Lint/diagnostik:
+- E2E smoke scripti yerel Docker ortamına bağımlı; CI ortamında çalıştırmak için runner yapılandırması gerekmektedir. Bu Faz 8'de ele alınacak.
+- Şu an yalnızca temel "sistem çalışıyor mu?" kontrolü yapılıyor. İleride eşik değerlerine dayalı performans doğrulama (örn. gecikme 100ms'yi geçmemelidir) eklenebilir.
 
-- `scripts/e2e_smoke.py`
-- `tests/test_phase7_e2e_script.py`
-- `docker-compose.yml`
-- `README.md`
+---
 
-## 5) Test Sonuclari
+## 6. Sonraki Faz
 
-- Pytest: **16 passed**
-- Compose config: **Basarili**
-- Lint: **Yeni hata yok**
+Faz 8'de bu E2E testi GitHub Actions ortamına taşınacak. Her kod push'unda testler otomatik çalışacak; çıktı dosyaları ve raporlar GitHub üzerinde artifact olarak saklanacak.
 
-## 6) Riskler / Acik Maddeler
+---
 
-- `scripts/e2e_smoke.py` dogrudan local Docker ortami bekler; CI tarafinda runner ortam bagimliliklari ayri tanimlanmalidir.
-- E2E script su an temel smoke dogrulama yapiyor; ayrintili performans threshold kontrolleri Faz 8/9'da zenginlestirilebilir.
-
-## 7) Sonraki Faz
-
-Faz 8 (opsiyonel):
-
-- GitHub Actions CI
-- E2E smoke job
-- reports artifact upload
-
-## 8) Revizyon - Commit ve Push Bilgisi
-
-Bu rapor, kullanici istegi uzerine commit/push adimi sonrasinda guncellendi.
+## Ek — Commit Bilgisi
 
 - Commit: `441032e`
 - Mesaj: `Add phase 7 end-to-end smoke automation and reports.`
-- Branch: `main`
-- Remote: `origin`
-- Push: `main -> origin/main` basarili
+- Push: `main → origin/main` başarılı

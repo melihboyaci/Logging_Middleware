@@ -7,8 +7,11 @@ from unittest.mock import patch
 from middleware.src.metrics.queue_monitor import fetch_queue_depth
 from scripts.performance_report import (
     find_latest_metrics,
+    generate_plots,
     load_metrics,
     load_queue_samples,
+    metrics_have_pipeline_data,
+    resolve_metrics,
     write_summary,
 )
 
@@ -58,3 +61,36 @@ def test_load_metrics_and_queue_samples(tmp_path: Path) -> None:
     assert loaded["consumed_total"] == 1
     assert find_latest_metrics(tmp_path) == metrics_file
     assert len(load_queue_samples(tmp_path)) == 2
+
+
+def test_resolve_metrics_uses_json_snapshot(tmp_path: Path) -> None:
+    metrics_file = tmp_path / "e2e_metrics.json"
+    metrics_file.write_text(
+        json.dumps(
+            {
+                "consumed_total": 100,
+                "processed_total": 40,
+                "dropped_total": 60,
+                "processing_latency_seconds": {"p50": 0.001, "p95": 0.002, "p99": 0.003},
+            }
+        ),
+        encoding="utf-8",
+    )
+    resolved = resolve_metrics(None, tmp_path, metrics_url="http://127.0.0.1:1")
+    assert resolved["consumed_total"] == 100
+    assert metrics_have_pipeline_data(resolved)
+
+
+def test_generate_plots_renders_bars_with_metrics(tmp_path: Path) -> None:
+    metrics = {
+        "consumed_total": 300,
+        "processed_total": 120,
+        "dropped_total": 180,
+        "errors_total": 0,
+        "processing_latency_seconds": {"p50": 0.0003, "p95": 0.0008, "p99": 0.0012},
+    }
+    samples = [{"elapsed_s": 0, "depth": 5}, {"elapsed_s": 2, "depth": 1}]
+    plot_files = generate_plots(tmp_path, metrics, queue_depth=None, queue_samples=samples)
+    assert len(plot_files) == 3
+    counts_png = tmp_path / "plots" / "pipeline_counts.png"
+    assert counts_png.stat().st_size > 8_000

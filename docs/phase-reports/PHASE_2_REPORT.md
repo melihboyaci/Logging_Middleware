@@ -1,135 +1,112 @@
-# Faz 2 Detayli Rapor - Middleware Iskeleti ve Guvenlik
+# Faz 2 Raporu — Middleware İskeleti ve Güvenlik
 
-Tarih: 2026-06-01  
-Faz Durumu: Tamamlandi
+**Tarih:** 2026-06-01  
+**Durum:** Tamamlandı
 
-## 1) Faz Ozeti
+---
 
-Faz 2'de middleware tarafinin temel omurgasi kuruldu:
+## 1. Bu Fazın Amacı
 
-- RabbitMQ consumer iskeleti
-- FastAPI `health` ve `metrics` endpointleri
-- Chain of Responsibility tabani
-- KVKK anonimlestirme kurallari ve handler'i
-- Basit metrik toplayici
+Bu fazda middleware modülünün temel omurgası kuruldu. Producer'dan gelen log kayıtları artık RabbitMQ'dan okunup bir işleme hattına (pipeline) sokulmaya hazır. Bu fazın sonunda middleware şunları yapabiliyor:
 
-Bu faz ile producer'dan gelen `LogRecord` mesajlarini middleware tarafinda parse edip pipeline'a sokabilecek altyapi tamamlandi.
+- RabbitMQ kuyruğundan log mesajlarını okumak
+- Mesaj içindeki kişisel verileri (KVKK) maskelemek
+- Sağlık durumu ve anlık istatistikleri dışarıya sunmak (`/health`, `/metrics`)
 
-## 2) Yapilan Teknik Isler
+---
 
-### 2.1 Konfigurasyon ve Metrik Katmani
+## 2. Yapılan Çalışmalar
 
-- `middleware/src/config.py` ile `MiddlewareConfig` tanimlandi.
-  - AMQP URL
-  - Exchange / queue
-  - Prefetch
-  - API host/port
-- `middleware/src/metrics/collector.py` ile faz 2 icin temel sayaclar eklendi:
-  - `consumed_total`
-  - `processed_total`
-  - `dropped_total`
-  - `errors_total`
+### 2.1 Yapılandırma ve Temel Sayaçlar
 
-### 2.2 CoR Taban ve Pipeline Kurulumu
+Middleware'in davranışını kontrol eden ayarlar `config.py` dosyasında toplandı: RabbitMQ adresi, hangi kuyruğu dinleyeceği, kaç mesajı aynı anda işleyeceği, API sunucusunun hangi portta çalışacağı.
 
-- `middleware/src/pipeline/handler.py` ile `AbstractHandler` eklendi.
-- `middleware/src/pipeline/pipeline_builder.py` ile ilk zincir kuruldu:
-  - `AnonymizationHandler -> TerminalHandler`
-- `middleware/src/pipeline/terminal_handler.py` faz 2 icin gecici son adim olarak `processed_total` sayacini artiriyor.
+İşlem sırasında kaç mesaj alındı, kaçı işlendi, kaçı hata verdi — bunları takip eden basit sayaçlar `MetricsCollector` sınıfında tanımlandı.
 
-Bu yapi Faz 3'te filtre ve zenginlestirme handler'lari eklenerek genisletilecek.
+### 2.2 İşleme Hattı (Chain of Responsibility Tasarım Kalıbı)
 
-### 2.3 KVKK Kurallari ve Anonimlestirme
+Middleware, logları sıralı adımlardan geçiren bir "işleme hattı" kullanıyor. Bu yapı **Chain of Responsibility** (Sorumluluk Zinciri) tasarım kalıbına dayanıyor: her adım kendi işini yapıp logu bir sonraki adıma iletiyor.
 
-- `middleware/src/security/rules.py`:
-  - TC, kart, IBAN, SWIFT, email regex desenleri
-- `middleware/src/security/anonymizer.py`:
-  - `anonymize_text`
-  - `anonymize_payload`
-  - Sira: TC -> Kart -> IBAN -> SWIFT -> Email
+Bu fazda zincir iki adımdan oluşuyor:
 
-`AnonymizationHandler` (`middleware/src/pipeline/anonymization_handler.py`) log mesaji ve payload string alanlarini maskeliyor.
+```
+Anonimleştirme → Son Adım (sayaç arttırma)
+```
 
-### 2.4 RabbitMQ Consumer
+İlerideki fazlarda bu zincire filtreleme ve zenginleştirme adımları eklenecek.
 
-`middleware/src/transport/consumer.py`:
+### 2.3 KVKK Anonimleştirmesi
 
-- `aio-pika` ile robust baglanti
-- Topic exchange declaration
-- Queue declaration + bind
-- `prefetch_count` ayari
-- Mesaj validasyonu (`LogRecord.model_validate_json`)
-- Pipeline'a iletme
-- Metrik artirimlari (`consumed`, `dropped`, `errors`)
-- `message.process(requeue=False)` ile hata davranisi
+KVKK kapsamında maskelenmesi gereken kişisel veri türleri `security/rules.py` dosyasında düzenli ifadeler (regex) olarak tanımlandı. Maskeleme sırası şöyle:
 
-### 2.5 API ve Uygulama Yasam Dongusu
+1. TC kimlik numarası
+2. Kredi kartı numarası
+3. IBAN
+4. SWIFT/BIC kodu
+5. E-posta adresi
 
-- `middleware/src/api/routes.py`:
-  - `GET /health` -> `{\"status\": \"ok\"}`
-  - `GET /metrics` -> metrics snapshot
-- `middleware/src/main.py`:
-  - FastAPI lifespan icinde consumer start/stop
-  - `create_app()` factory
-  - `uvicorn` calistirma giris noktasi
+Hem log mesajının içindeki metin hem de ek bilgiler (`payload`) ayrı ayrı taranıyor ve hassas veriler `***` ile değiştiriliyor. Bu işlem pipeline'ın **ilk** adımında yapılıyor; hiçbir hassas veri sonraki aşamalara ulaşmıyor.
 
-## 3) Degisen / Eklenen Dosyalar
+### 2.4 RabbitMQ Dinleyicisi (Consumer)
+
+`consumer.py` dosyası middleware'in RabbitMQ'dan mesaj okuduğu katmanı oluşturuyor:
+
+- Kuyruk bağlantısı kurulduğunda otomatik olarak `logs.raw` kuyruğu bildirilip abone olunuyor
+- Her gelen mesaj `LogRecord` veri modeline dönüştürülüyor
+- Dönüştürme başarılıysa pipeline'a gönderiliyor
+- Hatalı mesajlar kuyruğa geri konmadan siliniyor ve hata sayacı artırılıyor
+
+### 2.5 Web Arayüzü (FastAPI)
+
+Middleware çalışırken dışarıdan durumunu sorgulamak mümkün:
+
+- `GET /health` → `{"status": "ok"}` — middleware ayakta mı?
+- `GET /metrics` → anlık sayaçlar — kaç mesaj işlendi, kaçı düşürüldü?
+
+FastAPI uygulaması başlarken RabbitMQ dinleyicisini de devreye alıyor; kapanırken temiz şekilde bağlantıyı kapatıyor.
+
+---
+
+## 3. Değişen / Oluşturulan Dosyalar
 
 - `middleware/src/config.py`
-- `middleware/src/metrics/__init__.py`
 - `middleware/src/metrics/collector.py`
-- `middleware/src/pipeline/__init__.py`
-- `middleware/src/pipeline/handler.py`
+- `middleware/src/pipeline/handler.py` (temel sınıf)
 - `middleware/src/pipeline/anonymization_handler.py`
 - `middleware/src/pipeline/terminal_handler.py`
 - `middleware/src/pipeline/pipeline_builder.py`
-- `middleware/src/security/__init__.py`
 - `middleware/src/security/rules.py`
 - `middleware/src/security/anonymizer.py`
-- `middleware/src/transport/__init__.py`
 - `middleware/src/transport/consumer.py`
-- `middleware/src/api/__init__.py`
 - `middleware/src/api/routes.py`
-- `middleware/src/main.py` (faz 0 scaffold'dan faz 2 app yapisina gecirildi)
-- `tests/test_phase2_middleware.py`
-- `docs/STATE.md`
-
-## 4) Calistirilan Testler/Komutlar
-
-1. Faz 1 + Faz 2 testleri:
-
-```bash
-python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py
-```
-
-2. Compose dogrulamasi:
-
-```bash
-docker compose -f d:\my-projects\yazılım-ödev-middleware\docker-compose.yml config
-```
-
-3. Lint/diagnostik kontrolu:
-
-- `middleware/src/**`
+- `middleware/src/main.py`
 - `tests/test_phase2_middleware.py`
 
-## 5) Test Sonuclari
+---
 
-- Pytest: **6 passed**
-- Compose config: **Basarili**
-- Lint: **Yeni hata yok**
+## 4. Çalıştırılan Testler
 
-## 6) Riskler / Acik Maddeler
+| Komut | Sonuç |
+|-------|-------|
+| `pytest test_phase1_producer.py test_phase2_middleware.py` | **6/6 test geçti** |
+| `docker compose config` | Başarılı |
+| Linter kontrolü | Yeni hata yok |
 
-- Faz 2'de pipeline sadece anonimlestirme + terminal adimindan olusuyor; filtre/zenginlestirme Faz 3'te eklenecek.
-- `metrics` endpoint su an temel sayac snapshot'u donuyor; histogram/p95/p99 Faz 5 hedefinde.
-- Live end-to-end (producer publish -> middleware consume -> cikti dosyalari) formatlama ve sink asamalari Faz 4'te tamamlaninca daha anlamli hale gelecek.
+Test kapsamı: KVKK anonimleştirme kuralları, `/health` ve `/metrics` endpoint'lerinin doğru yanıt vermesi.
 
-## 7) Sonraki Faz
+---
 
-Faz 3 odagi:
+## 5. Açık Maddeler
 
-- `filter_handler.py` ile INFO/WARNING ve `docker.*` loglarini dusurme
-- `enrichment_handler.py` + `enrichers.py` ile role tag ve ek alanlar
-- Pipeline zincirini genisletme
-- Faz 3 testleri ve raporu
+- Pipeline henüz yalnızca anonimleştirme adımından oluşuyor; filtreleme ve zenginleştirme Faz 3'te eklenecek.
+- Gecikme (latency) ölçümü ve p95/p99 istatistikleri Faz 5'te ekleneceğinden `/metrics` şimdilik yalnızca temel sayaçları gösteriyor.
+- Üçten fazla servis birlikte çalışmadan tam uçtan uca test anlamlı olmuyor; bu Faz 4 sonrasında yapılacak.
+
+---
+
+## 6. Sonraki Faz
+
+Faz 3'te pipeline iki yeni adımla genişletilecek:
+
+- **Filtreleme:** INFO/WARNING seviyesindeki ve Docker'ın kendi iç logları çıkarılacak (bu loglar sistemle ilgisiz olduğundan önemsiz kabul ediliyor).
+- **Zenginleştirme:** Her loga hedef kitlesine göre ek etiketler, işlem numarası ve kritiklik bilgisi eklenecek.

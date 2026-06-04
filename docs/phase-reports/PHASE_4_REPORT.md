@@ -1,116 +1,111 @@
-# Faz 4 Detayli Rapor - Bicimlendirme ve Yonlendirme
+# Faz 4 Raporu — Biçimlendirme ve Dosyaya Yazma
 
-Tarih: 2026-06-01  
-Faz Durumu: Tamamlandi
+**Tarih:** 2026-06-01  
+**Durum:** Tamamlandı
 
-## 1) Faz Ozeti
+---
 
-Faz 4'te middleware cikti katmani implement edildi:
+## 1. Bu Fazın Amacı
 
-- Strategy tabanli formatter siniflari
-- Role -> formatter secimi (factory)
-- Role bazli dosyaya yazan sink (RoleRouter)
-- Pipeline terminal adiminin role-router ile baglanmasi
+Önceki fazlarda loglar işleniyor ancak hiçbir yere yazılmıyordu. Bu fazda işleme hattının son adımı tamamlandı: işlenmiş loglar artık kullanıcının rolüne göre farklı formatlarda dosyaya yazılıyor.
 
-Bu fazla birlikte islenen loglar artik role ve format eslesmesine gore host `output/` klasorune yaziliyor.
+Bu fazın sonunda sistem çalışır hâle geldi. Bir log mesajı alındığında:
 
-## 2) Yapilan Teknik Isler
+1. Kişisel veriler maskeleniyor
+2. Gereksiz loglar eliniyor
+3. Log zenginleştiriliyor
+4. Rolüne göre biçimlendiriliyor ve `output/` klasörüne kaydediliyor
 
-### 2.1 Strategy Formatter Katmani
+---
 
-`middleware/src/formatting/` altinda:
+## 2. Yapılan Çalışmalar
 
-- `formatter.py` (arayuz)
-- `json_formatter.py`
-- `csv_formatter.py`
-- `markdown_formatter.py`
-- `html_formatter.py`
+### 2.1 Biçimlendirme Katmanı (Strategy Tasarım Kalıbı)
 
-eklendi.
+Her rol için ayrı bir biçimlendirici sınıf yazıldı. Hepsi aynı sözleşmeyi (`Formatter` arayüzü) uygular; yani tümüne aynı şekilde "bu logu biçimlendir" denilebilir.
 
-### 2.2 Formatter Factory
+| Biçimlendirici | Rol | Çıktı |
+|----------------|-----|-------|
+| `MarkdownFormatter` | Sistem yöneticisi | Okunması kolay, başlıklı metin |
+| `JsonFormatter` | Geliştirici | Programatik işlemeye uygun JSON |
+| `CsvFormatter` | Güvenlik ekibi | Excel/tablo analizi için CSV |
+| `HtmlFormatter` | (İsteğe bağlı) | Tarayıcıda görüntülenebilir HTML |
 
-`middleware/src/formatting/formatter_factory.py` eklendi.
+Bu yapı **Strategy** (Strateji) tasarım kalıbıdır: algoritma (biçimlendirme) çalışma anında değiştirilebilir; yeni bir format eklemek için sadece yeni bir sınıf yazmak yeterlidir.
 
-- `ROLE_FORMAT_MAP` konfiguna gore role uygun formatter seciliyor.
-- Varsayilanlar:
-  - sysadmin -> markdown
-  - developer -> json
-  - security -> csv
+### 2.2 Format Seçimi (Factory Tasarım Kalıbı)
 
-### 2.3 Config Genisletmesi
+`formatter_factory.py` dosyasındaki `formatter_for_role()` fonksiyonu rol bilgisine bakarak otomatik olarak doğru biçimlendiriciyi döndürüyor:
 
-`middleware/src/config.py` guncellendi:
+- `sysadmin` → Markdown
+- `developer` → JSON
+- `security` → CSV
 
-- `ROLE_FORMAT_MAP`
-- `FORMAT_FILE_EXT`
-- `OUTPUT_DIR`
+Bu eşleşme kod içinde sabit değil; yapılandırma dosyasından okunuyor. Eşleştirmeyi değiştirmek için kodu düzenlemek gerekmiyor.
 
-boylece format secimi koddan degil konfigurasyondan yonetilir hale geldi.
+### 2.3 Dosyaya Yazma (RoleRouter)
 
-### 2.4 Role Router Sink
+`RoleRouter` sınıfı şunları yapıyor:
 
-`middleware/src/sinks/role_router.py` eklendi.
+1. Logun rolüne bakarak doğru biçimlendiriciyi seçiyor
+2. Logu biçimlendiriyor
+3. Çıktıyı `output/` klasöründeki uygun dosyaya ekliyor
 
-Islev:
+Sonuç olarak `output/` klasöründe üç dosya oluşuyor:
 
-- role'e gore formatter secer
-- hedef dosya uzantisini belirler
-- satiri dosyaya append eder
-- yazilan dosya yolunu doner
+- `output/sysadmin.md` — Markdown formatında sistem logları
+- `output/developer.json` — JSON formatında geliştirici logları
+- `output/security.csv` — CSV formatında güvenlik logları
 
-### 2.5 Pipeline Terminal Entegrasyonu
+### 2.4 Yapılandırma Genişletmesi
 
-`middleware/src/pipeline/terminal_handler.py` guncellendi:
+Middleware yapılandırma dosyasına (`config.py`) üç ek ayar eklendi:
 
-- Log once role router ile dosyaya yaziliyor
-- sonra `processed_total` artiriliyor
+- Rol → format eşleşme tablosu
+- Her format için dosya uzantısı
+- Çıktı klasörü yolu
 
-Bu adimla pipeline'in sonu artik somut cikti uretiyor.
+Böylece çıktı davranışı tamamen yapılandırma dosyasından yönetilir hâle geldi.
 
-## 3) Degisen / Eklenen Dosyalar
+---
 
-- `middleware/src/formatting/__init__.py`
-- `middleware/src/formatting/formatter.py`
+## 3. Değişen / Oluşturulan Dosyalar
+
+- `middleware/src/formatting/formatter.py` (temel sınıf)
 - `middleware/src/formatting/json_formatter.py`
 - `middleware/src/formatting/csv_formatter.py`
 - `middleware/src/formatting/markdown_formatter.py`
 - `middleware/src/formatting/html_formatter.py`
 - `middleware/src/formatting/formatter_factory.py`
-- `middleware/src/config.py` (guncellendi)
-- `middleware/src/sinks/__init__.py`
 - `middleware/src/sinks/role_router.py`
-- `middleware/src/pipeline/terminal_handler.py` (guncellendi)
-- `tests/test_phase4_formatting.py`
-- `docs/STATE.md`
-
-## 4) Calistirilan Testler/Komutlar
-
-```bash
-python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py tests/test_phase4_formatting.py
-```
-
-Lint/diagnostik kontrolu:
-
-- `middleware/src/formatting/**`
-- `middleware/src/sinks/role_router.py`
+- `middleware/src/config.py` (güncellendi)
+- `middleware/src/pipeline/terminal_handler.py` (güncellendi)
 - `tests/test_phase4_formatting.py`
 
-## 5) Test Sonuclari
+---
 
-- Pytest: **11 passed**
-- Lint: **Yeni hata yok**
+## 4. Çalıştırılan Testler
 
-## 6) Riskler / Acik Maddeler
+| Komut | Sonuç |
+|-------|-------|
+| `pytest test_phase1 test_phase2 test_phase3 test_phase4` | **11/11 test geçti** |
+| Linter kontrolü | Yeni hata yok |
 
-- CSV formatter header davranisi tek process icinde stateful; birden fazla process olursa her process ilk satirda header yazabilir (ileride normalize edilebilir).
-- HTML/Markdown ciktilar append bazli; buyuk hacimde dosya boyutlari hizla artabilir (Faz 5 raporlarinda takip edilecek).
+Test kapsamı: her biçimlendiricinin doğru formatta çıktı üretmesi, `RoleRouter`'ın doğru dosyaya yazması, yanlış rol için varsayılan biçimlendirme davranışı.
 
-## 7) Sonraki Faz
+---
 
-Faz 5 odagi:
+## 5. Açık Maddeler
 
-- Metriklerin raporlama katmani
-- Producer load runner (rampa ve burst)
-- `reports/` altina otomatik metrik ciktisi
-- Filtre acik/kapali ve kuyruk odakli performans kaniti
+- CSV biçimlendirici sütun başlığını ilk satırda yazıyor. Birden fazla sürecin aynı dosyaya yazması durumunda başlık birden çok kez tekrarlanabilir. Bu küçük tutarsızlık ileride düzeltilebilir.
+- Çıktı dosyaları her yeni loga ekleme yaparak büyüyor (append modu). Çok yüksek hacimli trafikte dosya boyutları hızla artabilir; gerekirse dönemsel döndürme (rotation) mekanizması eklenebilir.
+
+---
+
+## 6. Sonraki Faz
+
+Faz 5'te sisteme performans ölçümü ekleniyor:
+
+- Her logun işlenme süresi ölçülecek (p50/p95/p99 gecikme istatistikleri)
+- Producer yüksek yük profilleriyle çalıştırılıp sistemin ne kadar dayanabildiği test edilecek
+- Ölçüm sonuçları `reports/` klasörüne otomatik olarak kaydedilecek

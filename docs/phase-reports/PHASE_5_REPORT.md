@@ -1,120 +1,89 @@
-# Faz 5 Detayli Rapor - Metrikler ve Stres Altyapisi
+# Faz 5 Raporu — Performans Ölçümü ve Stres Altyapısı
 
-Tarih: 2026-06-01  
-Faz Durumu: Tamamlandi
+**Tarih:** 2026-06-01  
+**Durum:** Tamamlandı
 
-## 1) Faz Ozeti
+---
 
-Faz 5'te performans ve olculebilirlik katmani guclendirildi:
+## 1. Bu Fazın Amacı
 
-- Metrics collector p50/p95/p99 gecikme ozetini uretecek sekilde genisletildi.
-- Metrics snapshot dosyasi ureten reporter eklendi.
-- Producer tarafina stress profile ureten load runner eklendi.
-- `reports/` klasorune otomatik cikti uretebilen altyapi tamamlandi.
+Sistemin ne kadar hızlı çalıştığını sayılarla ortaya koymak gerekiyor. Bu fazda iki şey yapıldı:
 
-## 2) Yapilan Teknik Isler
+1. **Middleware tarafında:** Her log kaydının ne kadar sürede işlendiği ölçüldü; istatistiksel özet (medyan, %95, %99 yüzdelikler) üretildi.
+2. **Producer tarafında:** Sistemi farklı yük profillerinde zorlayan bir stres testi altyapısı eklendi.
 
-### 2.1 Metrics Collector Genisletmesi
+---
 
-`middleware/src/metrics/collector.py`:
+## 2. Yapılan Çalışmalar
 
-- `published_total` alani eklendi.
-- `processing_latency_seconds` listesi eklendi.
-- `record_processing_latency` fonksiyonu eklendi.
-- `snapshot` icinde `processing_latency_seconds: {p50, p95, p99}` ozetine gecildi.
+### 2.1 Gecikme Ölçümü
 
-### 2.2 Consumer Tarafinda Gecikme Olcumu
+`MetricsCollector` sınıfı yeni yetenekler kazandı:
 
-`middleware/src/transport/consumer.py`:
+- Her log işlenirken başlangıç ve bitiş zamanı kaydediliyor
+- Tüm bu süreler bir listede biriktiriliyor
+- `/metrics` isteğine cevap verilirken bu listeden şu istatistikler hesaplanıyor:
+  - **p50 (medyan):** Logların yarısı bu süreden daha hızlı işleniyor
+  - **p95:** Logların %95'i bu süreden daha hızlı işleniyor
+  - **p99:** En yavaş %1 için eşik değer
 
-- Mesaj isleme baslangic/bitis zamani `perf_counter` ile olculdu.
-- Her mesaj sonunda `METRICS.record_processing_latency(...)` cagrisi eklendi.
+Bu üç ölçüm, sistemin gerçek yük altındaki davranışını anlamak için endüstri standardı.
 
-### 2.3 Metrics Reporter
+### 2.2 Anlık Durum Raporu
 
-`middleware/src/metrics/reporter.py` eklendi.
+`MetricsReporter` sınıfı eklendi. Bu sınıf tek bir iş yapıyor: o anki tüm metrikleri (kaç log işlendi, gecikme istatistikleri vb.) zaman damgalı bir JSON dosyası olarak `reports/` klasörüne kaydediyor. Bu dosyalar sonraki fazda grafiklere dönüştürülecek.
 
-Saglanan ozellik:
+### 2.3 Stres Testi — Yük Koşucusu
 
-- `write_snapshot(...)` ile timestamp'li JSON metrics dosyasi olusturma.
-- Varsayilan cikti dizini: `reports/`.
+`load_runner.py` iki farklı yük profili sunuyor:
 
-### 2.4 Producer Stress Load Runner
+| Profil | Açıklama |
+|--------|----------|
+| **Ramp (Kademeli Artış)** | Yavaş başlayıp giderek artan yük — sistemin ne zaman "gerilmeye" başladığını gösterir |
+| **Burst (Ani Yük)** | Kısa sürede çok sayıda mesaj — ani trafik artışlarına karşı dayanıklılığı ölçer |
 
-`producer/src/stress/load_runner.py` eklendi.
+Her stres testi sonucunda `reports/load_profile_<profil>.json` dosyası oluşuyor: kaç log gönderildi, ne kadar sürdü, saniyede kaç log işlendiği.
 
-Saglanan profil tipleri:
+---
 
-- `ramp`
-- `burst`
+## 3. Değişen / Oluşturulan Dosyalar
 
-CLI:
+- `middleware/src/metrics/collector.py` (gecikme ölçümü eklendi)
+- `middleware/src/metrics/reporter.py` (yeni)
+- `middleware/src/transport/consumer.py` (her mesajda süre ölçümü eklendi)
+- `producer/src/stress/load_runner.py` (yeni)
+- `tests/test_phase5_metrics_and_stress.py` (yeni)
 
-- `--profile`
-- `--reports-dir`
-- `--max-total`
-
-Cikti:
-
-- `reports/load_profile_<profile>.json`
-
-## 3) Degisen / Eklenen Dosyalar
-
-- `middleware/src/metrics/collector.py` (guncellendi)
-- `middleware/src/metrics/reporter.py`
-- `middleware/src/transport/consumer.py` (guncellendi)
-- `producer/src/stress/__init__.py`
-- `producer/src/stress/load_runner.py`
-- `tests/test_phase5_metrics_and_stress.py`
-- `docs/STATE.md`
-
-Uretilen ornek rapor dosyalari:
+Örnek çıktı dosyaları:
 
 - `reports/load_profile_ramp.json`
 - `reports/phase5_metrics_*.json`
 
-## 4) Calistirilan Testler/Komutlar
+---
 
-1. Tum faz testleri:
+## 4. Çalıştırılan Testler
 
-```bash
-python -m pytest -q tests/test_phase1_producer.py tests/test_phase2_middleware.py tests/test_phase3_pipeline.py tests/test_phase4_formatting.py tests/test_phase5_metrics_and_stress.py
-```
+| Komut | Sonuç |
+|-------|-------|
+| `pytest` (tüm fazlar) | **14/14 test geçti** |
+| Stres testi — ramp profil | Başarılı, JSON raporu oluştu |
+| Gecikme raporu üretimi | Başarılı |
+| Linter kontrolü | Yeni hata yok |
 
-2. Ornek stress profil uretimi:
+---
 
-```bash
-python -m producer.src.stress.load_runner --profile ramp --reports-dir reports --max-total 5000
-```
+## 5. Açık Maddeler
 
-3. Ornek metrics snapshot:
+- Kuyruk derinliği (RabbitMQ'da ne kadar mesaj bekliyor) şu an ölçülmüyor; bu Faz 9'da eklenecek.
+- Stres testi şu an bağımsız çalışıyor; ileride E2E smoke testi ile entegre edilebilir.
 
-```bash
-python -c "from middleware.src.metrics.reporter import MetricsReporter; p=MetricsReporter('reports').write_snapshot('phase5_metrics'); print(p)"
-```
+---
 
-4. Lint/diagnostik kontrolu:
+## 6. Sonraki Faz
 
-- `middleware/src/metrics/**`
-- `producer/src/stress/**`
-- `tests/test_phase5_metrics_and_stress.py`
+Faz 6'da proje teslim aşamasına hazırlanıyor:
 
-## 5) Test Sonuclari
-
-- Pytest: **14 passed**
-- Rapor dosyalari: **Basariyla olustu**
-- Lint: **Yeni hata yok**
-
-## 6) Riskler / Acik Maddeler
-
-- Queue depth cekimi (RabbitMQ management API) ve grafik uretimi sonraki adimda daha zenginlestirilecek.
-- `published_total` middleware tarafinda simdilik harici kaynaktan beslenmiyor; producer metrik entegrasyonu Faz 6 toparlamasinda netlestirilecek.
-
-## 7) Sonraki Faz
-
-Faz 6 odagi:
-
-- README sonlandirma
-- Teslim/video anlatim akisi dokumani
-- Test/plans/rapor konsolidasyonu
-- Son kalite gecisi ve push hazirligi
+- Projeyi açıklayan kapsamlı bir README
+- Ödev raporu için hazır şablon
+- Demo video için adım adım anlatım senaryosu
+- Tüm testlerin son bir toplu koşusu

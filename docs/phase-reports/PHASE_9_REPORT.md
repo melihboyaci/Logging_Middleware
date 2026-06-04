@@ -1,97 +1,102 @@
-# Faz 9 Detayli Rapor - Performans Grafik Otomasyonu
+# Faz 9 Raporu — Performans Grafiklerinin Otomatize Edilmesi
 
-Tarih: 2026-06-02  
-Faz Durumu: Tamamlandi
+**Tarih:** 2026-06-02  
+**Durum:** Tamamlandı
 
-## 1) Faz Ozeti
+---
 
-Faz 9'da performans raporlama katmani tamamlandi:
+## 1. Bu Fazın Amacı
 
-- RabbitMQ Management API uzerinden queue depth okuma
-- Metrics snapshot'tan grafik uretimi (matplotlib)
-- Markdown performans ozeti
-- E2E smoke sirasinda queue depth ornekleme
-- CI'da performance report adimi
+Sistemin performansını rakamlarla göstermek yeterli değil; görseller çok daha etkili anlatıyor. Bu fazda performans verilerinden otomatik olarak grafikler üretildi ve bu grafikler CI pipeline'ına entegre edildi.
 
-## 2) Yapilan Teknik Isler
+Artık E2E test koştuktan sonra şu üç grafik ve bir özet metin dosyası otomatik olarak oluşuyor:
 
-### 2.1 Queue Monitor
+- İşleme hattı istatistikleri (kaç log işlendi, elenidi, hata verdi)
+- Gecikme yüzdelikleri (p50, p95, p99)
+- Kuyruk derinliği (RabbitMQ'da bekleyen mesaj sayısının zaman içindeki değişimi)
 
-`middleware/src/metrics/queue_monitor.py`:
+---
 
-- `fetch_queue_depth(queue_name, mgmt_url, ...)`
-- RabbitMQ `/api/queues/{vhost}/{queue}` endpoint'inden `messages` alanini okur
+## 2. Yapılan Çalışmalar
 
-### 2.2 Performance Report Script
+### 2.1 Kuyruk Derinliği İzleme
 
-`scripts/performance_report.py`:
+RabbitMQ'nun yönetim arayüzü, kuyrukların anlık durumunu bir API üzerinden sunuyor. `queue_monitor.py` modülü bu API'ye bağlanıp `logs.raw` kuyruğunda kaç mesaj beklediğini okuyor.
 
-- En son metrics JSON dosyasini yukler
-- `queue_samples.jsonl` varsa zaman serisi cizer
-- Uretilen ciktilar:
-  - `reports/performance_summary.md`
-  - `reports/plots/pipeline_counts.png`
-  - `reports/plots/latency_percentiles.png`
-  - `reports/plots/queue_depth.png`
+Bu ölçüm şunu gösteriyor: üretici çok hızlı mesaj gönderirse kuyruk birikir ve sistem gecikmesi artar. Grafik bu dinamiği görünür kılıyor.
 
-### 2.3 E2E Queue Sampling
+### 2.2 Performans Raporu Scripti
 
-`scripts/e2e_smoke.py` guncellendi:
+`scripts/performance_report.py` scripti şu adımları otomatik gerçekleştiriyor:
 
-- Publish sonrasi queue depth ornekleri `reports/queue_samples.jsonl` dosyasina yazilir
-- Bu veri Faz 9 grafiklerinde kullanilir
+1. `reports/` klasöründen en son metrik JSON dosyasını yüklüyor
+2. Varsa `queue_samples.jsonl` dosyasından kuyruk derinliği verisini okuyor
+3. Üç ayrı grafik PNG dosyası olarak kaydediyor (`reports/plots/`)
+4. `reports/performance_summary.md` adında okunabilir bir özet rapor oluşturuyor
+
+Script, `--skip-queue-fetch` parametresiyle CI ortamında güvenli modda da çalışabiliyor: RabbitMQ'ya bağlanmaya çalışmıyor, yalnızca kaydedilmiş verileri kullanıyor.
+
+### 2.3 E2E Testine Kuyruk Örneklemesi Eklenmesi
+
+`e2e_smoke.py` scripti güncellendi. Artık producer log gönderirken arka planda düzenli aralıklarla kuyruk derinliği ölçülüp `reports/queue_samples.jsonl` dosyasına yazılıyor. Bu veri daha sonra grafik scriptinin kullandığı ham veri kaynağı.
 
 ### 2.4 CI Entegrasyonu
 
-`.github/workflows/ci.yml`:
+GitHub Actions iş akışına iki güncelleme yapıldı:
 
-- `requirements-dev.txt` (matplotlib) test job'ina eklendi
-- `e2e-smoke` sonrasi `performance_report` adimi eklendi (`--skip-queue-fetch` CI ortaminda guvenli mod)
+- `requirements-dev.txt` (grafik kütüphanesi `matplotlib` içeriyor) test işine eklendi
+- E2E testinden sonra performans raporu scripti otomatik koşuyor; üretilen grafikler artifact olarak yükleniyor
 
-### 2.5 Bagimlilikler
+Bu sayede her CI çalışmasında performans grafikleri GitHub arayüzünden indirilebiliyor.
 
-- `requirements-dev.txt` -> `matplotlib>=3.8`
+### 2.5 Yeni Bağımlılık
 
-## 3) Degisen / Eklenen Dosyalar
+- `requirements-dev.txt` → `matplotlib>=3.8` (grafik çizim kütüphanesi)
 
-- `middleware/src/metrics/queue_monitor.py`
-- `scripts/__init__.py`
-- `scripts/performance_report.py`
-- `scripts/e2e_smoke.py` (guncellendi)
-- `requirements-dev.txt`
-- `tests/test_phase9_performance_report.py`
-- `README.md`
-- `.github/workflows/ci.yml`
-- `docs/STATE.md`
+Grafik çizimi, ekran gerektirmeden arka planda çalışan `Agg` arka ucunu kullandığı için sunucu ve CI ortamlarında sorunsuz çalışıyor.
 
-## 4) Calistirilan Testler/Komutlar
+---
 
-```bash
-python -m pip install -r requirements-dev.txt
-python -m pytest -q
-python scripts/performance_report.py --reports-dir reports --skip-queue-fetch
-```
+## 3. Değişen / Oluşturulan Dosyalar
 
-## 5) Test Sonuclari
+- `middleware/src/metrics/queue_monitor.py` (yeni)
+- `scripts/performance_report.py` (yeni)
+- `scripts/e2e_smoke.py` (kuyruk örneklemesi eklendi)
+- `requirements-dev.txt` (yeni)
+- `tests/test_phase9_performance_report.py` (yeni)
+- `.github/workflows/ci.yml` (güncellendi)
+- `README.md` (güncellendi)
 
-- Pytest: **21 passed**
-- Performance report script: **Basarili** (summary + 3 plot dosyasi)
+---
 
-## 6) Riskler / Acik Maddeler
+## 4. Çalıştırılan Testler
 
-- Queue depth canli cekimi local/docker ortamina baglidir; CI'da `--skip-queue-fetch` kullanilir.
-- Matplotlib headless backend (`Agg`) kullanilir; GUI gerektirmez.
+| Komut | Sonuç |
+|-------|-------|
+| `pip install -r requirements-dev.txt` | Başarılı |
+| `pytest -q` (tüm testler) | **21/21 test geçti** |
+| `python scripts/performance_report.py --skip-queue-fetch` | 3 grafik + özet rapor oluştu |
 
-## 7) Sonraki Adim
+---
 
-- Video cekimi ve EDSYE raporu tamamlama
+## 5. Açık Maddeler
 
-## 8) Revizyon - Commit ve Push Bilgisi
+- Kuyruk derinliği canlı çekimi (`--skip-queue-fetch` olmadan) yalnızca çalışan Docker ortamında anlamlı; CI'da her zaman `--skip-queue-fetch` kullanılmalı.
+- Grafik kütüphanesi (`matplotlib`) yalnızca geliştirici bağımlılıkları arasında; production imajlarına dahil edilmiyor.
 
-Bu rapor, kullanici istegi uzerine commit/push adimi sonrasinda guncellendi.
+---
+
+## 6. Sonraki Adım
+
+Tüm fazlar tamamlandı. Bundan sonra yapılacaklar:
+
+- Demo videosu çekimi (`docs/video-script.md` rehber olarak kullanılabilir)
+- `docs/report-template.md` şablonu kullanılarak ödev raporunun yazılması
+
+---
+
+## Ek — Commit Bilgisi
 
 - Commit: `fc64b29`
 - Mesaj: `Add phase 9 performance reporting with queue monitoring and plots.`
-- Branch: `main`
-- Remote: `origin`
-- Push: `main -> origin/main` basarili
+- Push: `main → origin/main` başarılı

@@ -5,6 +5,8 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -20,6 +22,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--queue-name", default="logs.raw")
     parser.add_argument("--mgmt-url", default="http://localhost:15672")
     parser.add_argument("--skip-queue-fetch", action="store_true")
+    parser.add_argument(
+        "--metrics-url",
+        default="http://localhost:8000/metrics",
+        help="Fallback metrics endpoint when no JSON snapshot exists in reports/",
+    )
+    parser.add_argument(
+        "--no-metrics-fetch",
+        action="store_true",
+        help="Do not call --metrics-url; use only reports/*.json or zeros",
+    )
     return parser.parse_args()
 
 
@@ -28,17 +40,54 @@ def find_latest_metrics(reports_dir: Path) -> Path | None:
     return candidates[0] if candidates else None
 
 
+def empty_metrics() -> dict:
+    return {
+        "consumed_total": 0,
+        "processed_total": 0,
+        "dropped_total": 0,
+        "errors_total": 0,
+        "processing_latency_seconds": {"p50": 0.0, "p95": 0.0, "p99": 0.0},
+    }
+
+
+def fetch_metrics_from_url(url: str) -> dict | None:
+    try:
+        with urlopen(url, timeout=10) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (URLError, OSError, json.JSONDecodeError, TimeoutError) as exc:
+        print(f"Warning: could not fetch metrics from {url}: {exc}")
+        return None
+
+
+def metrics_have_pipeline_data(metrics: dict) -> bool:
+    return any(int(metrics.get(key, 0)) > 0 for key in ("consumed_total", "processed_total", "dropped_total"))
+
+
+def metrics_have_latency_data(metrics: dict) -> bool:
+    latency = metrics.get("processing_latency_seconds", {})
+    return any(float(latency.get(key, 0.0)) > 0.0 for key in ("p50", "p95", "p99"))
+
+
 def load_metrics(path: Path | None, reports_dir: Path) -> dict:
     target = path or find_latest_metrics(reports_dir)
     if target is None or not target.exists():
-        return {
-            "consumed_total": 0,
-            "processed_total": 0,
-            "dropped_total": 0,
-            "errors_total": 0,
-            "processing_latency_seconds": {"p50": 0.0, "p95": 0.0, "p99": 0.0},
-        }
+        return empty_metrics()
     return json.loads(target.read_text(encoding="utf-8"))
+
+
+def resolve_metrics(
+    path: Path | None,
+    reports_dir: Path,
+    metrics_url: str | None,
+) -> dict:
+    metrics = load_metrics(path, reports_dir)
+    if metrics_have_pipeline_data(metrics) or metrics_have_latency_data(metrics):
+        return metrics
+    if metrics_url:
+        fetched = fetch_metrics_from_url(metrics_url)
+        if fetched is not None:
+            return fetched
+    return metrics
 
 
 def load_queue_samples(reports_dir: Path) -> list[dict[str, float | int]]:
@@ -109,28 +158,52 @@ def generate_plots(
     plots_dir.mkdir(parents=True, exist_ok=True)
     generated: list[str] = []
 
-    counts = {
-        "consumed": int(metrics.get("consumed_total", 0)),
-        "processed": int(metrics.get("processed_total", 0)),
-        "dropped": int(metrics.get("dropped_total", 0)),
-    }
     fig, ax = plt.subplots(figsize=(7, 4))
-    ax.bar(list(counts.keys()), list(counts.values()), color=["#4C78A8", "#59A14F", "#E15759"])
+    if metrics_have_pipeline_data(metrics):
+        counts = {
+            "consumed": int(metrics.get("consumed_total", 0)),
+            "processed": int(metrics.get("processed_total", 0)),
+            "dropped": int(metrics.get("dropped_total", 0)),
+        }
+        ax.bar(list(counts.keys()), list(counts.values()), color=["#4C78A8", "#59A14F", "#E15759"])
+        ax.set_ylabel("count")
+        ax.set_ylim(bottom=0)
+    else:
+        ax.text(
+            0.5,
+            0.5,
+            "No metrics data\n(run e2e_smoke or pass --metrics-file)",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+        )
+        ax.set_axis_off()
     ax.set_title("Pipeline Counters")
-    ax.set_ylabel("count")
     path_counts = plots_dir / "pipeline_counts.png"
     fig.tight_layout()
     fig.savefig(path_counts)
     plt.close(fig)
     generated.append(path_counts.name)
 
-    latency = metrics.get("processing_latency_seconds", {})
     fig, ax = plt.subplots(figsize=(7, 4))
-    labels = ["p50", "p95", "p99"]
-    values = [float(latency.get(k, 0.0)) for k in labels]
-    ax.bar(labels, values, color="#F28E2B")
+    if metrics_have_latency_data(metrics):
+        latency = metrics.get("processing_latency_seconds", {})
+        labels = ["p50", "p95", "p99"]
+        values = [float(latency.get(k, 0.0)) for k in labels]
+        ax.bar(labels, values, color="#F28E2B")
+        ax.set_ylabel("seconds")
+        ax.set_ylim(bottom=0)
+    else:
+        ax.text(
+            0.5,
+            0.5,
+            "No latency data\n(run e2e_smoke or pass --metrics-file)",
+            ha="center",
+            va="center",
+            transform=ax.transAxes,
+        )
+        ax.set_axis_off()
     ax.set_title("Processing Latency Percentiles")
-    ax.set_ylabel("seconds")
     path_latency = plots_dir / "latency_percentiles.png"
     fig.tight_layout()
     fig.savefig(path_latency)
@@ -166,7 +239,8 @@ def main() -> None:
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     metrics_path = Path(args.metrics_file) if args.metrics_file else None
-    metrics = load_metrics(metrics_path, reports_dir)
+    metrics_url = None if args.no_metrics_fetch else args.metrics_url
+    metrics = resolve_metrics(metrics_path, reports_dir, metrics_url)
     queue_samples = load_queue_samples(reports_dir)
 
     queue_depth: int | None = None

@@ -50,13 +50,25 @@ def assert_outputs() -> None:
         raise AssertionError(f"Expected output files are missing: {missing}")
 
 
-def assert_metrics() -> None:
+def fetch_metrics_payload() -> dict:
     with urlopen("http://localhost:8000/metrics", timeout=10) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+        return json.loads(response.read().decode("utf-8"))
+
+
+def assert_metrics() -> dict:
+    payload = fetch_metrics_payload()
     if payload.get("consumed_total", 0) <= 0:
         raise AssertionError(f"consumed_total should be > 0, got: {payload}")
     if payload.get("processed_total", 0) <= 0:
         raise AssertionError(f"processed_total should be > 0, got: {payload}")
+    return payload
+
+
+def save_metrics_snapshot(payload: dict) -> Path:
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    target = REPORTS / "e2e_metrics.json"
+    target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return target
 
 
 def clean_artifacts() -> None:
@@ -114,7 +126,9 @@ def main() -> None:
 
         print("E2E smoke: validating outputs and metrics...")
         assert_outputs()
-        assert_metrics()
+        metrics_payload = assert_metrics()
+        metrics_path = save_metrics_snapshot(metrics_payload)
+        print(f"E2E smoke: saved metrics snapshot -> {metrics_path}")
         print("E2E smoke: PASSED")
     finally:
         print("E2E smoke: shutting down compose services...")
