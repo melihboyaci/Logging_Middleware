@@ -134,16 +134,6 @@ python scripts/performance_report.py --reports-dir reports --skip-queue-fetch
 | `reports/performance_summary.md` | Özet metin raporu |
 | `reports/plots/*.png` | Pipeline, gecikme ve kuyruk grafikleri |
 
-Grafikler yerelde üretildikten sonra aşağıda görünür:
-
-![Pipeline sayaçları](reports/plots/pipeline_counts.png)
-
-![Gecikme yüzdelikleri](reports/plots/latency_percentiles.png)
-
-![Kuyruk derinliği](reports/plots/queue_depth.png)
-
-Grafikler boş görünüyorsa önce `scripts/e2e_smoke.py` çalıştırın; bu betik metrik anlık görüntüsünü ve kuyruk örneklerini oluşturur.
-
 ## Betikler (`scripts/`)
 
 | Betik | İşlev |
