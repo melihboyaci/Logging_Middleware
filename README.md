@@ -1,4 +1,4 @@
-# CENG302 Logging Middleware
+# Logging Middleware
 
 RabbitMQ tabanlı, KVKK uyumlu bir log middleware projesidir. Sistem üç bileşenden oluşur: log üreten **Producer**, logları işleyen **Middleware** ve iki uygulama arasında tampon görevi gören **RabbitMQ** broker.
 
